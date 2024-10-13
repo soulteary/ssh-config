@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"testing"
 
-	Define "github.com/soulteary/ssh-yaml/internal/define"
-	Parser "github.com/soulteary/ssh-yaml/internal/parser"
+	Define "github.com/soulteary/ssh-config/internal/define"
+	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
 
 func TestConvertToJSON(t *testing.T) {

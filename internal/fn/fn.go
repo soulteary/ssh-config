@@ -8,8 +8,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/soulteary/ssh-yaml/internal/define"
-	Define "github.com/soulteary/ssh-yaml/internal/define"
+	"github.com/soulteary/ssh-config/internal/define"
+	Define "github.com/soulteary/ssh-config/internal/define"
 	"gopkg.in/yaml.v2"
 )
 

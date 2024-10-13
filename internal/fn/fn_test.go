@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	Define "github.com/soulteary/ssh-yaml/internal/define"
-	Fn "github.com/soulteary/ssh-yaml/internal/fn"
+	Define "github.com/soulteary/ssh-config/internal/define"
+	Fn "github.com/soulteary/ssh-config/internal/fn"
 )
 
 func TestGetUserInputFromStdin(t *testing.T) {

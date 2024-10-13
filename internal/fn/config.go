@@ -1,7 +1,7 @@
 package fn
 
 import (
-	Define "github.com/soulteary/ssh-yaml/internal/define"
+	Define "github.com/soulteary/ssh-config/internal/define"
 )
 
 func FindGlobalConfig(configs []Define.HostConfig) (result []Define.HostConfig) {

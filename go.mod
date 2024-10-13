@@ -1,4 +1,4 @@
-module github.com/soulteary/ssh-yaml
+module github.com/soulteary/ssh-config
 
 go 1.23.0
 

@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	Define "github.com/soulteary/ssh-yaml/internal/define"
-	Fn "github.com/soulteary/ssh-yaml/internal/fn"
-	Parser "github.com/soulteary/ssh-yaml/internal/parser"
+	Define "github.com/soulteary/ssh-config/internal/define"
+	Fn "github.com/soulteary/ssh-config/internal/fn"
+	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
 
 func TestConvertToYAML(t *testing.T) {
