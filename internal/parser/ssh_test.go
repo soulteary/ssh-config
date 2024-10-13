@@ -114,3 +114,94 @@ func TestGetSSHConfigContent(t *testing.T) {
 		})
 	}
 }
+
+func TestParseSSHConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected Parser.HostConfig
+	}{
+		{
+			name: "Basic Config",
+			input: `
+Host example
+    HostName example.com
+    User testuser
+    IdentityFile ~/.ssh/id_rsa
+    Port 2222
+`,
+			expected: Parser.HostConfig{
+				HostName:     "example.com",
+				User:         "testuser",
+				IdentityFile: "~/.ssh/id_rsa",
+				Port:         "2222",
+			},
+		},
+		{
+			name: "Full Config",
+			input: `
+Host fullexample
+    HostName fullexample.com
+    User fulluser
+    IdentityFile ~/.ssh/full_id_rsa
+    Port 3333
+    ControlPath ~/.ssh/cm_%r@%h:%p
+    ControlPersist 30m
+    TCPKeepAlive yes
+    Compression yes
+    ForwardAgent yes
+    Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+    HostKeyAlgorithms ssh-ed25519,rsa-sha2-512
+    KexAlgorithms curve25519-sha256,diffie-hellman-group14-sha256
+    PubkeyAuthentication yes
+    ProxyCommand ssh jumphost nc %h %p
+`,
+			expected: Parser.HostConfig{
+				HostName:             "fullexample.com",
+				User:                 "fulluser",
+				IdentityFile:         "~/.ssh/full_id_rsa",
+				Port:                 "3333",
+				ControlPath:          "~/.ssh/cm_%r@%h:%p",
+				ControlPersist:       "30m",
+				TCPKeepAlive:         "yes",
+				Compression:          "yes",
+				ForwardAgent:         "yes",
+				Ciphers:              "aes128-ctr,aes192-ctr,aes256-ctr",
+				HostKeyAlgorithms:    "ssh-ed25519,rsa-sha2-512",
+				KexAlgorithms:        "curve25519-sha256,diffie-hellman-group14-sha256",
+				PubkeyAuthentication: "yes",
+				ProxyCommand:         "ssh jumphost nc %h %p",
+			},
+		},
+		{
+			name: "Empty Config",
+			input: `
+# This is a comment
+Host empty
+    # This is another comment
+`,
+			expected: Parser.HostConfig{},
+		},
+		{
+			name: "Unknown Keys",
+			input: `
+Host unknown
+    HostName unknown.com
+    UnknownKey1 value1
+    UnknownKey2 value2
+`,
+			expected: Parser.HostConfig{
+				HostName: "unknown.com",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Parser.ParseSSHConfig(tt.input)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("ParseSSHConfig() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
