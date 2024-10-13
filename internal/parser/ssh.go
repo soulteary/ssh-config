@@ -112,6 +112,10 @@ func ParseSSHConfig(input string, notes string) (config HostConfig) {
 				config.ProxyCommand = value
 			case "host":
 				config.YamlUserHost = value
+			case "include":
+				config.Include = value
+			case "pubkeyacceptedalgorithms":
+				config.PubkeyAcceptedAlgorithms = value
 			default:
 				fmt.Println("Unknown key", key)
 			}
