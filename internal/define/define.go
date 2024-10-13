@@ -5,3 +5,5 @@ type HostConfig struct {
 	Notes  string `yaml:"Notes,omitempty"`
 	Config map[string]string
 }
+
+type HostConfigForJSON map[string]string
