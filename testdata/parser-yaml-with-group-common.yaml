@@ -1,0 +1,28 @@
+global:
+  HostKeyAlgorithms: +ssh-rsa
+  PubkeyAcceptedAlgorithms: +ssh-rsa
+
+default:
+  Compression: "no"
+  Port: "2345"
+
+Group public:
+  Common:
+    Compression: "yes"
+    ControlPersist: "yes"
+    ForwardAgent: "yes"
+    Port: "1234"
+    TCPKeepAlive: "yes"
+  Hosts:
+    server1:
+      Notes: your notes here
+      config:
+        ControlPath: ~/.ssh/server-1-%r@%h:%p
+        HostName: 123.123.123.123
+        IdentityFile: ~/.ssh/keys/your-key1
+    server2:
+      config:
+        ControlPath: ~/.ssh/server-2-%r@%h:%p
+        HostName: 123.234.123.234
+        IdentityFile: ~/.ssh/keys/your-key2
+        User: ubuntu
