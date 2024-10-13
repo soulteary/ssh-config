@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/soulteary/ssh-yaml/internal/define"
 	"gopkg.in/yaml.v2"
 )
 
@@ -56,4 +57,23 @@ func GetJSONBytes(data any) []byte {
 		return nil
 	}
 	return jsonData
+}
+
+func DetectStringType(input string) string {
+	trimmedInput := strings.TrimSpace(input)
+
+	if trimmedInput == "" {
+		return "TEXT"
+	}
+
+	var js []define.HostConfigForJSON
+	if json.Unmarshal([]byte(trimmedInput), &js) == nil {
+		return "JSON"
+	}
+
+	var y define.YAMLOutput
+	if yaml.Unmarshal([]byte(trimmedInput), &y) == nil {
+		return "YAML"
+	}
+	return "TEXT"
 }

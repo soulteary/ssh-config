@@ -268,3 +268,77 @@ func TestGetJSONBytes_Error(t *testing.T) {
 		})
 	}
 }
+
+func TestDetectStringType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "Valid JSON",
+			input:    `[{"HostName":"10.11.12.125"},{"HostName":"10.11.12.124"},{"HostName":"10.11.12.123"},{"Compression":"yes","ControlPath":"~/.ssh/server-%r@%h:%p","ControlPersist":"yes","ForwardAgent":"yes","HostName":"123.123.123.234","IdentityFile":"~/.ssh/keys/your-key","Port":"1234","TCPKeepAlive":"yes"},{"HostKeyAlgorithms":"+ssh-rsa"}]`,
+			expected: "JSON",
+		},
+		{
+			name: "Valid YAML",
+			input: `
+global:
+  HostKeyAlgorithms: +ssh-rsa
+Group 10.11.12.123:
+  Hosts:
+    10.11.12.124:
+      config:
+        HostName: 10.11.12.124
+Group 10.11.12.125:
+  Hosts:
+    10.11.12.125:
+      config:
+        HostName: 10.11.12.125
+Group server:
+  Hosts:
+    server:
+      Notes: website
+      config:
+        Compression: "yes"
+        ControlPath: ~/.ssh/server-%r@%h:%p
+        ControlPersist: "yes"
+        ForwardAgent: "yes"
+        HostName: 123.123.123.234
+        IdentityFile: ~/.ssh/keys/your-key
+        Port: "1234"
+        TCPKeepAlive: "yes"
+			`,
+			expected: "YAML",
+		},
+		{
+			name:     "Plain text",
+			input:    "This is just a plain text.",
+			expected: "TEXT",
+		},
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "TEXT",
+		},
+		{
+			name:     "JSON-like Text",
+			input:    "{name: test, value: 123}",
+			expected: "TEXT",
+		},
+		{
+			name:     "Whitespace-only input",
+			input:    "   \n\t  ",
+			expected: "TEXT",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fn.DetectStringType(tt.input)
+			if result != tt.expected {
+				t.Errorf("DetectStringType(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}

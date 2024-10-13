@@ -13,12 +13,12 @@ func TestConvertToYAML(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    []Define.HostConfig
-		expected Parser.YAMLOutput
+		expected Define.YAMLOutput
 	}{
 		{
 			name:     "Empty input",
 			input:    []Define.HostConfig{},
-			expected: Parser.YAMLOutput{},
+			expected: Define.YAMLOutput{},
 		},
 		{
 			name: "Only global config",
@@ -31,7 +31,7 @@ func TestConvertToYAML(t *testing.T) {
 					},
 				},
 			},
-			expected: Parser.YAMLOutput{
+			expected: Define.YAMLOutput{
 				Global: map[string]string{
 					"key1": "value1",
 					"key2": "value2",
@@ -49,8 +49,8 @@ func TestConvertToYAML(t *testing.T) {
 					},
 				},
 			},
-			expected: Parser.YAMLOutput{
-				Groups: map[string]Parser.GroupConfig{
+			expected: Define.YAMLOutput{
+				Groups: map[string]Define.GroupConfig{
 					"Group host1": {
 						Config: Define.HostConfig{},
 						Hosts: map[string]Define.HostConfig{
@@ -82,11 +82,11 @@ func TestConvertToYAML(t *testing.T) {
 					},
 				},
 			},
-			expected: Parser.YAMLOutput{
+			expected: Define.YAMLOutput{
 				Global: map[string]string{
 					"globalKey": "globalValue",
 				},
-				Groups: map[string]Parser.GroupConfig{
+				Groups: map[string]Define.GroupConfig{
 					"Group host1": {
 						Config: Define.HostConfig{},
 						Hosts: map[string]Define.HostConfig{

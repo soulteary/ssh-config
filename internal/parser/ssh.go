@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"bufio"
 	"fmt"
 	"reflect"
 	"strings"
@@ -20,9 +19,9 @@ func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
 	var currentHost string
 	var currentComments []string
 
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
+	lines := strings.Split(input, "\n")
+	for _, rawLine := range lines {
+		line := strings.TrimSpace(rawLine)
 
 		if line == "" {
 			continue
