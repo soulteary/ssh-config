@@ -9,7 +9,7 @@ type HostConfig struct {
 	Name   string `yaml:"Name,omitempty"`
 	Notes  string `yaml:"Notes,omitempty"`
 	Config map[string]string
-	Extra  HostExtraConfig
+	Extra  HostExtraConfig `yaml:"Extra,omitempty"`
 }
 
 // json
@@ -23,6 +23,6 @@ type GroupConfig struct {
 }
 type YAMLOutput struct {
 	Global  map[string]string      `yaml:"global,omitempty"`
-	Default HostConfig             `yaml:"default,omitempty"`
+	Default map[string]string      `yaml:"default,omitempty"`
 	Groups  map[string]GroupConfig `yaml:",inline"`
 }

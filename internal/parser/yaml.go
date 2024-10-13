@@ -82,9 +82,17 @@ func GroupYAMLConfig(input string) []Define.HostConfig {
 				prefix = groupConfig.Prefix
 			}
 
-			for hostName, hostConfig := range groupConfig.Hosts {
+			for hostName, originConfig := range groupConfig.Hosts {
+				hostConfig := originConfig
 				hostConfig.Name = hostName
 				hostConfig.Extra.Prefix = prefix
+				if yamlConfig.Default != nil {
+					for key, value := range yamlConfig.Default {
+						if _, ok := hostConfig.Config[key]; !ok {
+							hostConfig.Config[key] = value
+						}
+					}
+				}
 				hostConfigs = append(hostConfigs, hostConfig)
 			}
 		}

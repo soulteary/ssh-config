@@ -247,17 +247,16 @@ global:
 func TestGroupYAMLConfigWithGroupPrefix(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		t.Errorf("TestGroupYAMLConfig() error = %v", err)
+		t.Errorf("TestGroupYAMLConfigWithGroupPrefix() error = %v", err)
 	}
 
-	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-yaml-group-with-group-prefix.yaml"))
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-yaml-with-group-prefix.yaml"))
 	if err != nil {
-		t.Errorf("TestGroupYAMLConfig() error = %v", err)
+		t.Errorf("TestGroupYAMLConfigWithGroupPrefix() error = %v", err)
 	}
 
-	// Test case 3: Global config and groups
-	input3 := string(buf)
-	expected3 := []Define.HostConfig{
+	input := string(buf)
+	expected := []Define.HostConfig{
 		{
 			Name: "*",
 			Config: map[string]string{
@@ -300,25 +299,106 @@ func TestGroupYAMLConfigWithGroupPrefix(t *testing.T) {
 			},
 		},
 	}
-	result3 := Parser.GroupYAMLConfig(input3)
+	result := Parser.GroupYAMLConfig(input)
 
-	if len(result3) != len(expected3) {
-		t.Errorf("Global config and groups not correctly parsed. Expected %v, got %v", expected3, result3)
+	if len(result) != len(expected) {
+		t.Errorf("Global config and groups not correctly parsed. Expected %v, got %v", expected, result)
 	}
 
-	for resultItem := range result3 {
-		resultLabel := result3[resultItem].Name
-		for expectItem := range expected3 {
-			if expected3[expectItem].Name == resultLabel {
+	for resultItem := range result {
+		resultLabel := result[resultItem].Name
+		for expectItem := range expected {
+			if expected[expectItem].Name == resultLabel {
 
-				if expected3[expectItem].Notes != result3[resultItem].Notes {
-					t.Errorf("Notes not correctly parsed. Expected %v, got %v", expected3[expectItem].Notes, result3[resultItem].Notes)
+				if expected[expectItem].Notes != result[resultItem].Notes {
+					t.Errorf("Notes not correctly parsed. Expected %v, got %v", expected[expectItem].Notes, result[resultItem].Notes)
 				}
 
-				orderKeys := Fn.GetOrderMaps(expected3[expectItem].Config)
+				orderKeys := Fn.GetOrderMaps(expected[expectItem].Config)
 				for _, key := range orderKeys.Keys {
-					if expected3[expectItem].Config[key] != result3[resultItem].Config[key] {
-						t.Errorf("Config not correctly parsed. Expected %v, got %v", expected3[expectItem].Config[key], result3[resultItem].Config[key])
+					if expected[expectItem].Config[key] != result[resultItem].Config[key] {
+						t.Errorf("Config not correctly parsed. Expected %v, got %v", expected[expectItem].Config[key], result[resultItem].Config[key])
+					}
+				}
+			}
+		}
+	}
+}
+
+func TestYAMLConfigWithDefault(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestYAMLConfigWithDefault() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-yaml-with-default.yaml"))
+	if err != nil {
+		t.Errorf("TestYAMLConfigWithDefault() error = %v", err)
+	}
+
+	input := string(buf)
+	expected := []Define.HostConfig{
+		{
+			Name: "*",
+			Config: map[string]string{
+				"HostKeyAlgorithms":        "+ssh-rsa",
+				"PubkeyAcceptedAlgorithms": "+ssh-rsa",
+			},
+		},
+		{
+			Name:  "server1",
+			Notes: "your notes here",
+			Config: map[string]string{
+				"Compression":    "yes",
+				"ControlPath":    "~/.ssh/server-1-%r@%h:%p",
+				"ControlPersist": "yes",
+				"ForwardAgent":   "yes",
+				"HostName":       "123.123.123.123",
+				"IdentityFile":   "~/.ssh/keys/your-key1",
+				"Port":           "1234",
+				"TCPKeepAlive":   "yes",
+			},
+			Extra: Define.HostExtraConfig{
+				Prefix: "public-",
+			},
+		},
+		{
+			Name: "server2",
+			Config: map[string]string{
+				"Compression":    "yes",
+				"ControlPath":    "~/.ssh/server-2-%r@%h:%p",
+				"ControlPersist": "yes",
+				"ForwardAgent":   "yes",
+				"HostName":       "123.234.123.234",
+				"IdentityFile":   "~/.ssh/keys/your-key2",
+				"Port":           "1234",
+				"TCPKeepAlive":   "yes",
+				"User":           "ubuntu",
+			},
+			Extra: Define.HostExtraConfig{
+				Prefix: "public-",
+			},
+		},
+	}
+	result := Parser.GroupYAMLConfig(input)
+
+	if len(result) != len(expected) {
+		t.Errorf("Global config and groups not correctly parsed. Expected %v, got %v", expected, result)
+	}
+
+	for resultItem := range result {
+		resultLabel := result[resultItem].Name
+		for expectItem := range expected {
+			if expected[expectItem].Name == resultLabel {
+
+				if expected[expectItem].Notes != result[resultItem].Notes {
+					t.Errorf("Notes not correctly parsed. Expected %v, got %v", expected[expectItem].Notes, result[resultItem].Notes)
+				}
+
+				orderKeys := Fn.GetOrderMaps(expected[expectItem].Config)
+				for _, key := range orderKeys.Keys {
+					if expected[expectItem].Config[key] != result[resultItem].Config[key] {
+						t.Errorf("Config not correctly parsed. Expected %v, got %v", expected[expectItem].Config[key], result[resultItem].Config[key])
 					}
 				}
 			}
