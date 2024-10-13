@@ -2,9 +2,10 @@ package fn
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -20,19 +21,23 @@ func GetUserInputFromStdin() string {
 	return input
 }
 
-func GetOrderMaps(m map[string]string) map[string]string {
+type OrderedMap struct {
+	Keys []string
+	Data map[string]string
+}
+
+func GetOrderMaps(m map[string]string) OrderedMap {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
 	}
 
-	sort.Strings(keys)
+	slices.Sort(keys)
 
-	n := make(map[string]string)
-	for _, k := range keys {
-		n[k] = m[k]
+	return OrderedMap{
+		Keys: keys,
+		Data: m,
 	}
-	return n
 }
 
 func GetYamlBytes(data any) []byte {
@@ -42,4 +47,13 @@ func GetYamlBytes(data any) []byte {
 		return nil
 	}
 	return yamlData
+}
+
+func GetJSONBytes(data any) []byte {
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error marshaling to JSON:", err)
+		return nil
+	}
+	return jsonData
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	Define "github.com/soulteary/ssh-yaml/internal/define"
 	Parser "github.com/soulteary/ssh-yaml/internal/parser"
 )
 
@@ -71,7 +72,7 @@ func TestGetSSHConfigContent(t *testing.T) {
 				},
 			},
 			expected: Parser.SSHHostConfigGrouped{
-				Comments: strings.Join([]string{"# This is a comment", ""}, "\n"),
+				Comments: strings.Join([]string{"# This is a comment"}, "\n"),
 				Config: "Host example.com\n" +
 					"    HostName 192.168.1.1\n" +
 					"    Port 22\n" +
@@ -100,7 +101,7 @@ func TestGetSSHConfigContent(t *testing.T) {
 				},
 			},
 			expected: Parser.SSHHostConfigGrouped{
-				Comments: strings.Join([]string{"# Comment 1", "# Comment 2", ""}, "\n"),
+				Comments: strings.Join([]string{"# Comment 1", "# Comment 2"}, "\n"),
 				Config:   "Host multi.comment\n    Key Value",
 			},
 		},
@@ -279,6 +280,67 @@ func TestGetSingleHostData(t *testing.T) {
 
 			if notes != tt.expectedNotes {
 				t.Errorf("GetSingleHostData() notes = %v, want %v", notes, tt.expectedNotes)
+			}
+		})
+	}
+}
+
+func TestConvertToSSH(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []Define.HostConfig
+		expected string
+	}{
+		{
+			name:     "Empty input",
+			input:    []Define.HostConfig{},
+			expected: "",
+		},
+		{
+			name: "Only global config",
+			input: []Define.HostConfig{
+				{
+					Name:   "*",
+					Notes:  "Global config",
+					Config: map[string]string{"User": "globaluser", "IdentityFile": "~/.ssh/id_rsa"},
+				},
+			},
+			expected: "# Global config\nHost *\n    IdentityFile ~/.ssh/id_rsa\n    User globaluser\n",
+		},
+		{
+			name: "Only normal config",
+			input: []Define.HostConfig{
+				{
+					Name:   "myserver",
+					Notes:  "My server",
+					Config: map[string]string{"HostName": "192.168.1.100", "User": "myuser"},
+				},
+			},
+			expected: "# My server\nHost myserver\n    HostName 192.168.1.100\n    User myuser\n\n",
+		},
+		{
+			name: "Both global and normal configs",
+			input: []Define.HostConfig{
+				{
+					Name:   "*",
+					Notes:  "Global config",
+					Config: map[string]string{"User": "globaluser"},
+				},
+				{
+					Name:   "myserver",
+					Notes:  "My server",
+					Config: map[string]string{"HostName": "192.168.1.100"},
+				},
+			},
+			expected: "# Global config\nHost *\n    User globaluser\n\n# My server\nHost myserver\n    HostName 192.168.1.100\n\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Parser.ConvertToSSH(tt.input)
+			if !reflect.DeepEqual(string(result), tt.expected) {
+				t.Errorf("ConvertToSSH() = \n```\n%v\n```\n, want ```\n%v\n```\n", string(result), tt.expected)
 			}
 		})
 	}

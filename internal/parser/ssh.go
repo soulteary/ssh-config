@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	Define "github.com/soulteary/ssh-yaml/internal/define"
 	Fn "github.com/soulteary/ssh-yaml/internal/fn"
 )
 
@@ -28,7 +29,7 @@ func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
 		}
 
 		if strings.HasPrefix(line, "#") {
-			currentComments = append(currentComments, line)
+			currentComments = append(currentComments, strings.TrimSpace(line[1:]))
 		} else if strings.HasPrefix(line, "Host ") {
 			currentHost = strings.TrimSpace(strings.TrimPrefix(line, "Host "))
 			hostConfigs[currentHost] = SSHHostConfigGroup{
@@ -55,15 +56,13 @@ type SSHHostConfigGrouped struct {
 }
 
 func GetSSHConfigContent(host string, input SSHHostConfigGroup) (config SSHHostConfigGrouped) {
-	input.Comments = append(input.Comments, "")
 	config.Comments = strings.Join(input.Comments, "\n")
 
 	var lines []string
 
 	configs := Fn.GetOrderMaps(input.Config)
-
-	for key, value := range configs {
-		lines = append(lines, fmt.Sprintf("    %s %s", key, value))
+	for _, field := range configs.Keys {
+		lines = append(lines, fmt.Sprintf("    %s %s", field, configs.Data[field]))
 	}
 	config.Config = strings.Join(lines, "\n")
 	config.Config = "Host " + host + "\n" + config.Config
@@ -155,5 +154,42 @@ func GetSingleHostData(input HostConfig) (result map[string]string, name string,
 	delete(config, "YamlUserHost")
 	delete(config, "YamlUserNotes")
 
-	return Fn.GetOrderMaps(config), name, notes
+	return config, name, notes
+}
+
+func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
+	lines := make([]string, 0)
+
+	globalConfigs := Fn.FindGlobalConfig(hostConfigs)
+	if len(globalConfigs) > 0 {
+		for _, config := range globalConfigs {
+			if config.Notes != "" {
+				lines = append(lines, fmt.Sprintf("# %s", config.Notes))
+			}
+			lines = append(lines, fmt.Sprintf("Host %s", config.Name))
+
+			orderMaps := Fn.GetOrderMaps(config.Config)
+			for _, field := range orderMaps.Keys {
+				lines = append(lines, fmt.Sprintf("    %s %s", field, orderMaps.Data[field]))
+			}
+		}
+		lines = append(lines, "")
+	}
+
+	normalConfigs := Fn.FindNormalConfig(hostConfigs)
+	if len(normalConfigs) > 0 {
+		for _, config := range normalConfigs {
+			if config.Notes != "" {
+				lines = append(lines, fmt.Sprintf("# %s", config.Notes))
+			}
+			lines = append(lines, fmt.Sprintf("Host %s", config.Name))
+			orderMaps := Fn.GetOrderMaps(config.Config)
+			for _, field := range orderMaps.Keys {
+				lines = append(lines, fmt.Sprintf("    %s %s", field, orderMaps.Data[field]))
+			}
+			lines = append(lines, "")
+		}
+		lines = append(lines, "")
+	}
+	return []byte(strings.Join(lines, "\n"))
 }

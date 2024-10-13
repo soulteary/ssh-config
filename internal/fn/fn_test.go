@@ -57,45 +57,66 @@ func TestGetUserInputFromStdin(t *testing.T) {
 		})
 	}
 }
-
 func TestGetOrderMaps(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    map[string]string
-		expected map[string]string
+		expected Fn.OrderedMap
 	}{
 		{
-			name:     "Empty map",
-			input:    map[string]string{},
-			expected: map[string]string{},
+			name:  "Empty map",
+			input: map[string]string{},
+			expected: Fn.OrderedMap{
+				Keys: []string{},
+				Data: map[string]string{},
+			},
 		},
 		{
-			name:     "Single key-value pair",
-			input:    map[string]string{"a": "1"},
-			expected: map[string]string{"a": "1"},
+			name: "Single item map",
+			input: map[string]string{
+				"key1": "value1",
+			},
+			expected: Fn.OrderedMap{
+				Keys: []string{"key1"},
+				Data: map[string]string{
+					"key1": "value1",
+				},
+			},
 		},
 		{
-			name:     "Multiple key-value pairs",
-			input:    map[string]string{"b": "2", "a": "1", "c": "3"},
-			expected: map[string]string{"a": "1", "b": "2", "c": "3"},
-		},
-		{
-			name:     "Keys with different cases",
-			input:    map[string]string{"B": "2", "a": "1", "C": "3"},
-			expected: map[string]string{"B": "2", "C": "3", "a": "1"},
+			name: "Multiple items map",
+			input: map[string]string{
+				"key2": "value2",
+				"key1": "value1",
+				"key3": "value3",
+			},
+			expected: Fn.OrderedMap{
+				Keys: []string{"key1", "key2", "key3"},
+				Data: map[string]string{
+					"key1": "value1",
+					"key2": "value2",
+					"key3": "value3",
+				},
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := Fn.GetOrderMaps(tt.input)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("GetOrderMaps() = %v, want %v", result, tt.expected)
+
+			// Check if Keys are correct and in order
+			if !reflect.DeepEqual(result.Keys, tt.expected.Keys) {
+				t.Errorf("Keys mismatch. Got %v, want %v", result.Keys, tt.expected.Keys)
+			}
+
+			// Check if Data map is correct
+			if !reflect.DeepEqual(result.Data, tt.expected.Data) {
+				t.Errorf("Data mismatch. Got %v, want %v", result.Data, tt.expected.Data)
 			}
 		})
 	}
 }
-
 func TestGetYamlBytes(t *testing.T) {
 	tests := []struct {
 		name string
@@ -157,4 +178,93 @@ func TestGetYamlBytesError(t *testing.T) {
 			t.Errorf("GetYamlBytes(%v) = %v, want nil", invalidData, result)
 		}
 	})
+}
+
+func TestGetJSONBytes(t *testing.T) {
+	tests := []struct {
+		name string
+		data interface{}
+		want []byte
+	}{
+		{
+			name: "string",
+			data: "test",
+			want: []byte(`"test"`),
+		},
+		{
+			name: "integer",
+			data: 123,
+			want: []byte(`123`),
+		},
+		{
+			name: "float",
+			data: 123.45,
+			want: []byte(`123.45`),
+		},
+		{
+			name: "boolean",
+			data: true,
+			want: []byte(`true`),
+		},
+		{
+			name: "slice",
+			data: []string{"a", "b", "c"},
+			want: []byte(`["a","b","c"]`),
+		},
+		{
+			name: "map",
+			data: map[string]int{"a": 1, "b": 2},
+			want: []byte(`{"a":1,"b":2}`),
+		},
+		{
+			name: "struct",
+			data: struct {
+				Name string `json:"name"`
+				Age  int    `json:"age"`
+			}{"John", 30},
+			want: []byte(`{"name":"John","age":30}`),
+		},
+		{
+			name: "Nil input",
+			data: nil,
+			want: []byte(`null`),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Fn.GetJSONBytes(tt.data)
+			if string(got) != string(tt.want) {
+				t.Errorf("GetJSONBytes() = %v, want %v", string(got), string(tt.want))
+			}
+		})
+	}
+}
+
+type UnmarshalableJSONType struct{}
+
+func (u UnmarshalableJSONType) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("cannot marshal UnmarshalableType")
+}
+
+func TestGetJSONBytes_Error(t *testing.T) {
+	tests := []struct {
+		name string
+		data interface{}
+		want []byte
+	}{
+		{
+			name: "Function",
+			data: func() {},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Fn.GetJSONBytes(tt.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetJSONBytes() = %v, want %v", string(got), string(tt.want))
+			}
+		})
+	}
 }
