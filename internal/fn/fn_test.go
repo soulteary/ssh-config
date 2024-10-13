@@ -3,6 +3,7 @@ package fn_test
 import (
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -51,6 +52,44 @@ func TestGetUserInputFromStdin(t *testing.T) {
 
 			if result != tt.expected {
 				t.Errorf("Expected %q, but got %q", tt.expected, result)
+			}
+		})
+	}
+}
+
+func TestGetOrderMaps(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    map[string]string
+		expected map[string]string
+	}{
+		{
+			name:     "Empty map",
+			input:    map[string]string{},
+			expected: map[string]string{},
+		},
+		{
+			name:     "Single key-value pair",
+			input:    map[string]string{"a": "1"},
+			expected: map[string]string{"a": "1"},
+		},
+		{
+			name:     "Multiple key-value pairs",
+			input:    map[string]string{"b": "2", "a": "1", "c": "3"},
+			expected: map[string]string{"a": "1", "b": "2", "c": "3"},
+		},
+		{
+			name:     "Keys with different cases",
+			input:    map[string]string{"B": "2", "a": "1", "C": "3"},
+			expected: map[string]string{"B": "2", "C": "3", "a": "1"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetOrderMaps(tt.input)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("GetOrderMaps() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
