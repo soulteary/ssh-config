@@ -165,7 +165,10 @@ func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
 	if len(globalConfigs) > 0 {
 		for _, config := range globalConfigs {
 			if config.Notes != "" {
-				lines = append(lines, fmt.Sprintf("# %s", config.Notes))
+				notes := strings.Split(config.Notes, "\n")
+				for _, note := range notes {
+					lines = append(lines, fmt.Sprintf("# %s", note))
+				}
 			}
 			lines = append(lines, fmt.Sprintf("Host %s", config.Name))
 
@@ -181,7 +184,10 @@ func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
 	if len(normalConfigs) > 0 {
 		for _, config := range normalConfigs {
 			if config.Notes != "" {
-				lines = append(lines, fmt.Sprintf("# %s", config.Notes))
+				notes := strings.Split(config.Notes, "\n")
+				for _, note := range notes {
+					lines = append(lines, fmt.Sprintf("# %s", note))
+				}
 			}
 			lines = append(lines, fmt.Sprintf("Host %s", config.Name))
 			orderMaps := Fn.GetOrderMaps(config.Config)
