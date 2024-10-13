@@ -54,7 +54,7 @@ func TestConvertToYAML(t *testing.T) {
 			expected: Define.YAMLOutput{
 				Groups: map[string]Define.GroupConfig{
 					"Group host1": {
-						Config: Define.HostConfig{},
+						Common: make(map[string]string),
 						Hosts: map[string]Define.HostConfig{
 							"host1": {
 								Notes: "note1",
@@ -90,7 +90,7 @@ func TestConvertToYAML(t *testing.T) {
 				},
 				Groups: map[string]Define.GroupConfig{
 					"Group host1": {
-						Config: Define.HostConfig{},
+						Common: make(map[string]string),
 						Hosts: map[string]Define.HostConfig{
 							"host1": {
 								Notes: "note1",

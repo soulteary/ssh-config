@@ -33,7 +33,7 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 			groupHostConfig.Config = config.Config
 
 			groups[fmt.Sprintf("Group %s", config.Name)] = Define.GroupConfig{
-				Config: Define.HostConfig{},
+				Common: make(map[string]string),
 				Hosts: map[string]Define.HostConfig{
 					config.Name: groupHostConfig,
 				},

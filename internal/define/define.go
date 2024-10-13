@@ -18,7 +18,7 @@ type HostConfigForJSON map[string]string
 // yaml
 type GroupConfig struct {
 	Prefix string                `yaml:"Prefix,omitempty"`
-	Config HostConfig            `yaml:"Config,omitempty"`
+	Common map[string]string     `yaml:"Common,omitempty"`
 	Hosts  map[string]HostConfig `yaml:"Hosts,omitempty"`
 }
 type YAMLOutput struct {
