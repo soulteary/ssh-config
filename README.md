@@ -1,2 +1,3 @@
-# ssh-yaml
-Use more expressive Yaml to manage your Config files.
+# SSH Config Tool
+
+Use more expressive Yaml/JSON to manage your Config files.
