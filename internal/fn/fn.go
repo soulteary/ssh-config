@@ -2,9 +2,12 @@ package fn
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"sort"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 func GetUserInputFromStdin() string {
@@ -30,4 +33,13 @@ func GetOrderMaps(m map[string]string) map[string]string {
 		n[k] = m[k]
 	}
 	return n
+}
+
+func GetYamlBytes(data any) []byte {
+	yamlData, err := yaml.Marshal(&data)
+	if err != nil {
+		fmt.Println("Error marshaling to YAML:", err)
+		return nil
+	}
+	return yamlData
 }

@@ -1,6 +1,7 @@
 package fn_test
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -93,4 +94,67 @@ func TestGetOrderMaps(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetYamlBytes(t *testing.T) {
+	tests := []struct {
+		name string
+		data interface{}
+		want []byte
+	}{
+		{
+			name: "Simple struct",
+			data: struct {
+				Name string
+				Age  int
+			}{
+				Name: "John Doe",
+				Age:  30,
+			},
+			want: []byte("name: John Doe\nage: 30\n"),
+		},
+		{
+			name: "Map",
+			data: map[string]interface{}{
+				"key1": "value1",
+				"key2": 42,
+			},
+			want: []byte("key1: value1\nkey2: 42\n"),
+		},
+		{
+			name: "Slice",
+			data: []string{"apple", "banana", "cherry"},
+			want: []byte("- apple\n- banana\n- cherry\n"),
+		},
+		{
+			name: "Nil input",
+			data: nil,
+			want: []byte("null\n"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Fn.GetYamlBytes(tt.data)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetYamlBytes() = %v, want %v", string(got), string(tt.want))
+			}
+		})
+	}
+}
+
+type UnmarshalableType struct{}
+
+func (u UnmarshalableType) MarshalYAML() (interface{}, error) {
+	return nil, fmt.Errorf("cannot marshal UnmarshalableType")
+}
+
+func TestGetYamlBytesError(t *testing.T) {
+	t.Run("Invalid input", func(t *testing.T) {
+		invalidData := UnmarshalableType{}
+		result := Fn.GetYamlBytes(invalidData)
+		if result != nil {
+			t.Errorf("GetYamlBytes(%v) = %v, want nil", invalidData, result)
+		}
+	})
 }
