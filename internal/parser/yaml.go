@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"slices"
 
 	Define "github.com/soulteary/ssh-yaml/internal/define"
 	Fn "github.com/soulteary/ssh-yaml/internal/fn"
@@ -43,4 +44,43 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 	}
 
 	return Fn.GetYamlBytes(output)
+}
+
+type YAMLHostConfigGroup struct {
+	Comments []string
+	Config   map[string]string
+}
+
+func GroupYAMLConfig(input string) []Define.HostConfig {
+	yamlConfig := Fn.GetYamlData(input)
+
+	var hostConfigs []Define.HostConfig
+
+	if yamlConfig.Global != nil {
+		hostConfig := Define.HostConfig{
+			Name:   "*",
+			Config: make(map[string]string),
+		}
+		for key, value := range yamlConfig.Global {
+			hostConfig.Config[key] = value
+		}
+		hostConfigs = append(hostConfigs, hostConfig)
+	}
+
+	if yamlConfig.Groups != nil {
+		keys := make([]string, 0)
+		for key := range yamlConfig.Groups {
+			keys = append(keys, key)
+		}
+		slices.Sort(keys)
+
+		for _, groupName := range keys {
+			groupConfig := yamlConfig.Groups[groupName]
+			for hostName, hostConfig := range groupConfig.Hosts {
+				hostConfig.Name = hostName
+				hostConfigs = append(hostConfigs, hostConfig)
+			}
+		}
+	}
+	return hostConfigs
 }

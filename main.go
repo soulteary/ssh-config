@@ -42,7 +42,19 @@ func main() {
 
 			switch strings.ToUpper(fileType) {
 			case "YAML":
-				fmt.Println("YAML")
+				hostConfigs := Parser.GroupYAMLConfig(input)
+
+				if *toYAML {
+					fmt.Println(string(Parser.ConvertToYAML(hostConfigs)))
+				}
+
+				if *toSSH {
+					fmt.Println(string(Parser.ConvertToSSH(hostConfigs)))
+				}
+
+				if *toJSON {
+					fmt.Println(string(Parser.ConvertToJSON(hostConfigs)))
+				}
 			case "JSON":
 				fmt.Println("JSON")
 			case "TEXT":

@@ -1,6 +1,8 @@
 package parser_test
 
 import (
+	"os"
+	"path"
 	"reflect"
 	"testing"
 
@@ -137,4 +139,108 @@ func TestFindNormalConfig(t *testing.T) {
 	if !reflect.DeepEqual(expected, result) {
 		t.Errorf("FindNormalConfig() got = %v, want %v", result, expected)
 	}
+}
+
+func TestGroupYAMLConfig(t *testing.T) {
+	// Test case 1: Empty input
+	input1 := ""
+	result1 := Parser.GroupYAMLConfig(input1)
+	if len(result1) != 0 {
+		t.Errorf("Empty input should return empty result, got %v", result1)
+	}
+
+	// Test case 2: Only global config
+	input2 := `
+global:
+  user: globaluser
+  port: "22"
+`
+	expected2 := []Define.HostConfig{
+		{
+			Name: "*",
+			Config: map[string]string{
+				"user": "globaluser",
+				"port": "22",
+			},
+		},
+	}
+	result2 := Parser.GroupYAMLConfig(input2)
+	if !reflect.DeepEqual(expected2, result2) {
+		t.Errorf("Global config not correctly parsed. Expected %v, got %v", expected2, result2)
+	}
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestGroupYAMLConfig() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-yaml-group.yaml"))
+	if err != nil {
+		t.Errorf("TestGroupYAMLConfig() error = %v", err)
+	}
+
+	// Test case 3: Global config and groups
+	input3 := string(buf)
+	expected3 := []Define.HostConfig{
+		{
+			Name: "*",
+			Config: map[string]string{
+				"HostKeyAlgorithms":        "+ssh-rsa",
+				"PubkeyAcceptedAlgorithms": "+ssh-rsa",
+			},
+		},
+		{
+			Name:  "server1",
+			Notes: "your notes here",
+			Config: map[string]string{
+				"Compression":    "yes",
+				"ControlPath":    "~/.ssh/server-1-%r@%h:%p",
+				"ControlPersist": "yes",
+				"ForwardAgent":   "yes",
+				"HostName":       "123.123.123.123",
+				"IdentityFile":   "~/.ssh/keys/your-key1",
+				"Port":           "1234",
+				"TCPKeepAlive":   "yes",
+			},
+		},
+		{
+			Name: "server2",
+			Config: map[string]string{
+				"Compression":    "yes",
+				"ControlPath":    "~/.ssh/server-2-%r@%h:%p",
+				"ControlPersist": "yes",
+				"ForwardAgent":   "yes",
+				"HostName":       "123.234.123.234",
+				"IdentityFile":   "~/.ssh/keys/your-key2",
+				"Port":           "1234",
+				"TCPKeepAlive":   "yes",
+				"User":           "ubuntu",
+			},
+		},
+	}
+	result3 := Parser.GroupYAMLConfig(input3)
+
+	if len(result3) != len(expected3) {
+		t.Errorf("Global config and groups not correctly parsed. Expected %v, got %v", expected3, result3)
+	}
+
+	for resultItem := range result3 {
+		resultLabel := result3[resultItem].Name
+		for expectItem := range expected3 {
+			if expected3[expectItem].Name == resultLabel {
+
+				if expected3[expectItem].Notes != result3[resultItem].Notes {
+					t.Errorf("Notes not correctly parsed. Expected %v, got %v", expected3[expectItem].Notes, result3[resultItem].Notes)
+				}
+
+				orderKeys := Fn.GetOrderMaps(expected3[expectItem].Config)
+				for _, key := range orderKeys.Keys {
+					if expected3[expectItem].Config[key] != result3[resultItem].Config[key] {
+						t.Errorf("Config not correctly parsed. Expected %v, got %v", expected3[expectItem].Config[key], result3[resultItem].Config[key])
+					}
+				}
+			}
+		}
+	}
+
 }

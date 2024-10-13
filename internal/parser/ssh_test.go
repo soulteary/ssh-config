@@ -132,15 +132,17 @@ Host example
     User testuser
     IdentityFile ~/.ssh/id_rsa
     Port 2222
+	PubkeyAcceptedAlgorithms +ssh-rsa
 `,
 			notes: "",
 			expected: Parser.HostConfig{
-				HostName:      "example.com",
-				User:          "testuser",
-				IdentityFile:  "~/.ssh/id_rsa",
-				Port:          "2222",
-				YamlUserHost:  "example",
-				YamlUserNotes: "",
+				HostName:                 "example.com",
+				User:                     "testuser",
+				IdentityFile:             "~/.ssh/id_rsa",
+				Port:                     "2222",
+				YamlUserHost:             "example",
+				YamlUserNotes:            "",
+				PubkeyAcceptedAlgorithms: "+ssh-rsa",
 			},
 		},
 		{

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/soulteary/ssh-yaml/internal/define"
+	Define "github.com/soulteary/ssh-yaml/internal/define"
 	"gopkg.in/yaml.v2"
 )
 
@@ -48,6 +49,15 @@ func GetYamlBytes(data any) []byte {
 		return nil
 	}
 	return yamlData
+}
+
+func GetYamlData(input string) (yamlConfig Define.YAMLOutput) {
+	err := yaml.Unmarshal([]byte(input), &yamlConfig)
+	if err != nil {
+		fmt.Println("Error unmarshalling YAML:", err)
+		return yamlConfig
+	}
+	return yamlConfig
 }
 
 func GetJSONBytes(data any) []byte {

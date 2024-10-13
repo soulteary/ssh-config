@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 	"testing"
 
+	Define "github.com/soulteary/ssh-yaml/internal/define"
 	Fn "github.com/soulteary/ssh-yaml/internal/fn"
 )
 
@@ -338,6 +340,107 @@ Group server:
 			result := Fn.DetectStringType(tt.input)
 			if result != tt.expected {
 				t.Errorf("DetectStringType(%q) = %v, want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetYamlData(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestGetYamlData() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-yaml-group.yaml"))
+	if err != nil {
+		t.Errorf("TestGetYamlData() error = %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		expected Define.YAMLOutput
+	}{
+		{
+			name:  "Valid YAML",
+			input: string(buf),
+			expected: Define.YAMLOutput{
+				Global: map[string]string{
+					"HostKeyAlgorithms":        "+ssh-rsa",
+					"PubkeyAcceptedAlgorithms": "+ssh-rsa",
+				},
+				Groups: map[string]Define.GroupConfig{
+					"Group public": {
+						Hosts: map[string]Define.HostConfig{
+							"server1": {
+								Config: map[string]string{
+									"Compression":    "yes",
+									"ControlPath":    "~/.ssh/server-1-%r@%h:%p",
+									"ControlPersist": "yes",
+									"ForwardAgent":   "yes",
+									"HostName":       "123.123.123.123",
+									"IdentityFile":   "~/.ssh/keys/your-key1",
+									"Port":           "1234",
+									"TCPKeepAlive":   "yes",
+								},
+							},
+							"server2": {
+								Config: map[string]string{
+									"Compression":    "yes",
+									"ControlPath":    "~/.ssh/server-2-%r@%h:%p",
+									"ControlPersist": "yes",
+									"ForwardAgent":   "yes",
+									"HostName":       "123.234.123.234",
+									"IdentityFile":   "~/.ssh/keys/your-key2",
+									"Port":           "1234",
+									"TCPKeepAlive":   "yes",
+									"User":           "ubuntu",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "Empty input",
+			input:    "",
+			expected: Define.YAMLOutput{},
+		},
+		{
+			name: "Invalid YAML",
+			input: `
+name: John Doe
+age: thirty
+`,
+			expected: Define.YAMLOutput{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fn.GetYamlData(tt.input)
+
+			if result.Global != nil {
+				for key, value := range result.Global {
+					if tt.expected.Global[key] != value {
+						t.Errorf("Global config mismatch. Expected %v, got %v", tt.expected.Global, result.Global)
+					}
+				}
+			}
+
+			if result.Groups != nil {
+				for key, value := range result.Groups {
+					for hostKey, hostValue := range value.Hosts {
+						if tt.expected.Groups[key].Hosts[hostKey].Config != nil {
+							for configKey, configValue := range hostValue.Config {
+								if tt.expected.Groups[key].Hosts[hostKey].Config[configKey] != configValue {
+									t.Errorf("Group config mismatch. Expected %v, got %v", tt.expected.Groups[key].Hosts[hostKey].Config, hostValue.Config)
+								}
+							}
+						}
+					}
+				}
 			}
 		})
 	}
