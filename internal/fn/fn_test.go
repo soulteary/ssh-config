@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/soulteary/ssh-yaml/internal/fn"
+	Fn "github.com/soulteary/ssh-yaml/internal/fn"
 )
 
 func TestGetUserInputFromStdin(t *testing.T) {
@@ -48,7 +48,7 @@ func TestGetUserInputFromStdin(t *testing.T) {
 				writer.Close()
 			}()
 
-			result := GetUserInputFromStdin()
+			result := Fn.GetUserInputFromStdin()
 
 			if result != tt.expected {
 				t.Errorf("Expected %q, but got %q", tt.expected, result)
@@ -87,7 +87,7 @@ func TestGetOrderMaps(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetOrderMaps(tt.input)
+			result := Fn.GetOrderMaps(tt.input)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("GetOrderMaps() = %v, want %v", result, tt.expected)
 			}
