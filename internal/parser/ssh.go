@@ -2,7 +2,10 @@ package parser
 
 import (
 	"bufio"
+	"fmt"
 	"strings"
+
+	Fn "github.com/soulteary/ssh-yaml/internal/fn"
 )
 
 type SSHHostConfigGroup struct {
@@ -43,4 +46,23 @@ func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
 	}
 
 	return hostConfigs
+}
+
+type SSHHostConfigGrouped struct {
+	Comments []string
+	Config   string
+}
+
+func GetSSHConfigContent(host string, input SSHHostConfigGroup) (config SSHHostConfigGrouped) {
+	config.Comments = input.Comments
+	var lines []string
+
+	configs := Fn.GetOrderMaps(input.Config)
+
+	for key, value := range configs {
+		lines = append(lines, fmt.Sprintf("    %s %s", key, value))
+	}
+	config.Config = strings.Join(lines, "\n")
+	config.Config = "Host " + host + "\n" + config.Config
+	return config
 }
