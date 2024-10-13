@@ -1,2 +1,5 @@
 testdata2
 coverage.*
+test.yaml
+test.json
+test.cfg
