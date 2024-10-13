@@ -119,6 +119,7 @@ func TestParseSSHConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
+		notes    []string
 		expected Parser.HostConfig
 	}{
 		{
@@ -136,6 +137,7 @@ Host example
 				IdentityFile: "~/.ssh/id_rsa",
 				Port:         "2222",
 			},
+			notes: []string{},
 		},
 		{
 			name: "Full Config",
@@ -156,6 +158,7 @@ Host fullexample
     PubkeyAuthentication yes
     ProxyCommand ssh jumphost nc %h %p
 `,
+			notes: []string{"# This is a comment", "# This is another comment"},
 			expected: Parser.HostConfig{
 				HostName:             "fullexample.com",
 				User:                 "fulluser",
@@ -171,6 +174,7 @@ Host fullexample
 				KexAlgorithms:        "curve25519-sha256,diffie-hellman-group14-sha256",
 				PubkeyAuthentication: "yes",
 				ProxyCommand:         "ssh jumphost nc %h %p",
+				YamlUserNotes:        "# This is a comment\n# This is another comment",
 			},
 		},
 		{
@@ -180,6 +184,7 @@ Host fullexample
 Host empty
     # This is another comment
 `,
+			notes:    []string{},
 			expected: Parser.HostConfig{},
 		},
 		{
@@ -198,7 +203,7 @@ Host unknown
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Parser.ParseSSHConfig(tt.input)
+			got := Parser.ParseSSHConfig(tt.input, tt.notes)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("ParseSSHConfig() = %v, want %v", got, tt.expected)
 			}

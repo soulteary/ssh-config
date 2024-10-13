@@ -67,25 +67,7 @@ func GetSSHConfigContent(host string, input SSHHostConfigGroup) (config SSHHostC
 	return config
 }
 
-type HostConfig struct {
-	HostName             string `yaml:"HostName,omitempty"`
-	User                 string `yaml:"User,omitempty"`
-	IdentityFile         string `yaml:"IdentityFile,omitempty"`
-	Port                 string `yaml:"Port,omitempty"`
-	ControlPath          string `yaml:"ControlPath,omitempty"`
-	ControlPersist       string `yaml:"ControlPersist,omitempty"`
-	TCPKeepAlive         string `yaml:"TCPKeepAlive,omitempty"`
-	Compression          string `yaml:"Compression,omitempty"`
-	ForwardAgent         string `yaml:"ForwardAgent,omitempty"`
-	Ciphers              string `yaml:"Ciphers,omitempty"`
-	HostKeyAlgorithms    string `yaml:"HostKeyAlgorithms,omitempty"`
-	KexAlgorithms        string `yaml:"KexAlgorithms,omitempty"`
-	PubkeyAuthentication string `yaml:"PubkeyAuthentication,omitempty"`
-	ProxyCommand         string `yaml:"ProxyCommand,omitempty"`
-	Note                 string `yaml:"Note,omitempty"`
-}
-
-func ParseSSHConfig(input string) (config HostConfig) {
+func ParseSSHConfig(input string, notes []string) (config HostConfig) {
 	lines := strings.Split(input, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -99,8 +81,6 @@ func ParseSSHConfig(input string) (config HostConfig) {
 			value := strings.TrimSpace(parts[1])
 
 			switch key {
-			case "host":
-				// do nothing
 			case "hostname":
 				config.HostName = value
 			case "user":
@@ -129,11 +109,16 @@ func ParseSSHConfig(input string) (config HostConfig) {
 				config.PubkeyAuthentication = value
 			case "proxycommand":
 				config.ProxyCommand = value
+			case "host":
+				config.YamlUserHost = value
 			default:
 				fmt.Println("Unknown key", key)
 			}
 		}
 	}
 
+	if len(notes) > 0 {
+		config.YamlUserNotes = strings.Join(notes, "\n")
+	}
 	return config
 }
