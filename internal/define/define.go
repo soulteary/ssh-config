@@ -1,10 +1,15 @@
 package define
 
+type HostExtraConfig struct {
+	Prefix string
+}
+
 // ssh config
 type HostConfig struct {
 	Name   string `yaml:"Name,omitempty"`
 	Notes  string `yaml:"Notes,omitempty"`
 	Config map[string]string
+	Extra  HostExtraConfig
 }
 
 // json
