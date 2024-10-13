@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	Parser "github.com/soulteary/ssh-yaml/internal/parser"
@@ -70,7 +71,7 @@ func TestGetSSHConfigContent(t *testing.T) {
 				},
 			},
 			expected: Parser.SSHHostConfigGrouped{
-				Comments: []string{"# This is a comment"},
+				Comments: strings.Join([]string{"# This is a comment", ""}, "\n"),
 				Config: "Host example.com\n" +
 					"    HostName 192.168.1.1\n" +
 					"    Port 22\n" +
@@ -85,7 +86,7 @@ func TestGetSSHConfigContent(t *testing.T) {
 				Config:   map[string]string{},
 			},
 			expected: Parser.SSHHostConfigGrouped{
-				Comments: []string{},
+				Comments: "",
 				Config:   "Host empty.host\n",
 			},
 		},
@@ -99,7 +100,7 @@ func TestGetSSHConfigContent(t *testing.T) {
 				},
 			},
 			expected: Parser.SSHHostConfigGrouped{
-				Comments: []string{"# Comment 1", "# Comment 2"},
+				Comments: strings.Join([]string{"# Comment 1", "# Comment 2", ""}, "\n"),
 				Config:   "Host multi.comment\n    Key Value",
 			},
 		},
@@ -119,7 +120,7 @@ func TestParseSSHConfig(t *testing.T) {
 	tests := []struct {
 		name     string
 		input    string
-		notes    []string
+		notes    string
 		expected Parser.HostConfig
 	}{
 		{
@@ -131,18 +132,22 @@ Host example
     IdentityFile ~/.ssh/id_rsa
     Port 2222
 `,
+			notes: "",
 			expected: Parser.HostConfig{
-				HostName:     "example.com",
-				User:         "testuser",
-				IdentityFile: "~/.ssh/id_rsa",
-				Port:         "2222",
+				HostName:      "example.com",
+				User:          "testuser",
+				IdentityFile:  "~/.ssh/id_rsa",
+				Port:          "2222",
+				YamlUserHost:  "example",
+				YamlUserNotes: "",
 			},
-			notes: []string{},
 		},
 		{
 			name: "Full Config",
 			input: `
+# This is a comment
 Host fullexample
+    # This is another comment
     HostName fullexample.com
     User fulluser
     IdentityFile ~/.ssh/full_id_rsa
@@ -158,7 +163,7 @@ Host fullexample
     PubkeyAuthentication yes
     ProxyCommand ssh jumphost nc %h %p
 `,
-			notes: []string{"# This is a comment", "# This is another comment"},
+			notes: strings.Join([]string{"# This is a comment", "# This is another comment", ""}, "\n"),
 			expected: Parser.HostConfig{
 				HostName:             "fullexample.com",
 				User:                 "fulluser",
@@ -174,7 +179,8 @@ Host fullexample
 				KexAlgorithms:        "curve25519-sha256,diffie-hellman-group14-sha256",
 				PubkeyAuthentication: "yes",
 				ProxyCommand:         "ssh jumphost nc %h %p",
-				YamlUserNotes:        "# This is a comment\n# This is another comment",
+				YamlUserHost:         "fullexample",
+				YamlUserNotes:        "# This is a comment\n# This is another comment\n",
 			},
 		},
 		{
@@ -184,8 +190,11 @@ Host fullexample
 Host empty
     # This is another comment
 `,
-			notes:    []string{},
-			expected: Parser.HostConfig{},
+			notes: strings.Join([]string{"# This is a comment", "# This is another comment", ""}, "\n"),
+			expected: Parser.HostConfig{
+				YamlUserHost:  "empty",
+				YamlUserNotes: strings.Join([]string{"# This is a comment", "# This is another comment", ""}, "\n"),
+			},
 		},
 		{
 			name: "Unknown Keys",
@@ -196,7 +205,8 @@ Host unknown
     UnknownKey2 value2
 `,
 			expected: Parser.HostConfig{
-				HostName: "unknown.com",
+				HostName:     "unknown.com",
+				YamlUserHost: "unknown",
 			},
 		},
 	}
@@ -206,6 +216,69 @@ Host unknown
 			got := Parser.ParseSSHConfig(tt.input, tt.notes)
 			if !reflect.DeepEqual(got, tt.expected) {
 				t.Errorf("ParseSSHConfig() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetSingleHostData(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          Parser.HostConfig
+		expectedResult map[string]string
+		expectedName   string
+		expectedNotes  string
+	}{
+		{
+			name: "Full config",
+			input: Parser.HostConfig{
+				YamlUserHost:  "host1",
+				YamlUserNotes: "note1",
+				Port:          "22",
+				User:          "user1",
+			},
+			expectedResult: map[string]string{
+				"Port": "22",
+				"User": "user1",
+			},
+			expectedName:  "host1",
+			expectedNotes: "note1",
+		},
+		{
+			name: "Partial config",
+			input: Parser.HostConfig{
+				YamlUserHost: "host2",
+				Port:         "2222",
+			},
+			expectedResult: map[string]string{
+				"Port": "2222",
+			},
+			expectedName:  "host2",
+			expectedNotes: "",
+		},
+		{
+			name:           "Empty config",
+			input:          Parser.HostConfig{},
+			expectedResult: map[string]string{},
+			expectedName:   "",
+			expectedNotes:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, name, notes := Parser.GetSingleHostData(tt.input)
+
+			if !reflect.DeepEqual(result, tt.expectedResult) {
+				t.Errorf("GetSingleHostData() result = %v, want %v", result, tt.expectedResult)
+			}
+
+			if name != tt.expectedName {
+				t.Errorf("GetSingleHostData() name = %v, want %v", name, tt.expectedName)
+			}
+
+			if notes != tt.expectedNotes {
+				t.Errorf("GetSingleHostData() notes = %v, want %v", notes, tt.expectedNotes)
 			}
 		})
 	}

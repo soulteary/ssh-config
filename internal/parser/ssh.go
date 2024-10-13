@@ -3,6 +3,7 @@ package parser
 import (
 	"bufio"
 	"fmt"
+	"reflect"
 	"strings"
 
 	Fn "github.com/soulteary/ssh-yaml/internal/fn"
@@ -49,12 +50,14 @@ func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
 }
 
 type SSHHostConfigGrouped struct {
-	Comments []string
+	Comments string
 	Config   string
 }
 
 func GetSSHConfigContent(host string, input SSHHostConfigGroup) (config SSHHostConfigGrouped) {
-	config.Comments = input.Comments
+	input.Comments = append(input.Comments, "")
+	config.Comments = strings.Join(input.Comments, "\n")
+
 	var lines []string
 
 	configs := Fn.GetOrderMaps(input.Config)
@@ -67,7 +70,7 @@ func GetSSHConfigContent(host string, input SSHHostConfigGroup) (config SSHHostC
 	return config
 }
 
-func ParseSSHConfig(input string, notes []string) (config HostConfig) {
+func ParseSSHConfig(input string, notes string) (config HostConfig) {
 	lines := strings.Split(input, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -117,8 +120,40 @@ func ParseSSHConfig(input string, notes []string) (config HostConfig) {
 		}
 	}
 
-	if len(notes) > 0 {
-		config.YamlUserNotes = strings.Join(notes, "\n")
+	if notes != "" {
+		config.YamlUserNotes = notes
 	}
 	return config
+}
+
+func GetSingleHostData(input HostConfig) (result map[string]string, name string, notes string) {
+	v := reflect.ValueOf(input)
+	t := v.Type()
+
+	config := make(map[string]string)
+	for i := 0; i < v.NumField(); i++ {
+		field := t.Field(i)
+		value := v.Field(i)
+
+		tag := field.Tag.Get("yaml")
+		if tag == "" {
+			tag = field.Name
+		} else {
+			tag = strings.Split(tag, ",")[0]
+		}
+
+		if !value.IsZero() {
+			val := value.Interface().(string)
+			if val != "" {
+				config[tag] = val
+			}
+		}
+	}
+
+	name = config["YamlUserHost"]
+	notes = config["YamlUserNotes"]
+	delete(config, "YamlUserHost")
+	delete(config, "YamlUserNotes")
+
+	return Fn.GetOrderMaps(config), name, notes
 }
