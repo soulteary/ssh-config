@@ -89,69 +89,56 @@ func TestParseArgs(t *testing.T) {
 		})
 	}
 }
-
 func TestCheckConvertArgvValid(t *testing.T) {
 	tests := []struct {
-		name     string
-		args     Cmd.Args
-		wantBool bool
-		wantDesc string
+		name       string
+		args       Cmd.Args
+		wantResult bool
+		wantDesc   string
 	}{
 		{
-			name:     "All false",
-			args:     Cmd.Args{ToJSON: false, ToSSH: false, ToYAML: false},
-			wantBool: true,
-			wantDesc: "",
+			name:       "Only ToJSON is true",
+			args:       Cmd.Args{ToJSON: true, ToSSH: false, ToYAML: false},
+			wantResult: true,
+			wantDesc:   "",
 		},
 		{
-			name:     "Only ToJSON true",
-			args:     Cmd.Args{ToJSON: true, ToSSH: false, ToYAML: false},
-			wantBool: true,
-			wantDesc: "",
+			name:       "Only ToSSH is true",
+			args:       Cmd.Args{ToJSON: false, ToSSH: true, ToYAML: false},
+			wantResult: true,
+			wantDesc:   "",
 		},
 		{
-			name:     "Only ToSSH true",
-			args:     Cmd.Args{ToJSON: false, ToSSH: true, ToYAML: false},
-			wantBool: true,
-			wantDesc: "",
+			name:       "Only ToYAML is true",
+			args:       Cmd.Args{ToJSON: false, ToSSH: false, ToYAML: true},
+			wantResult: true,
+			wantDesc:   "",
 		},
 		{
-			name:     "Only ToYAML true",
-			args:     Cmd.Args{ToJSON: false, ToSSH: false, ToYAML: true},
-			wantBool: true,
-			wantDesc: "",
+			name:       "All flags are false",
+			args:       Cmd.Args{ToJSON: false, ToSSH: false, ToYAML: false},
+			wantResult: false,
+			wantDesc:   "Please specify either -to-yaml or -to-ssh or -to-json",
 		},
 		{
-			name:     "ToJSON and ToSSH true",
-			args:     Cmd.Args{ToJSON: true, ToSSH: true, ToYAML: false},
-			wantBool: false,
-			wantDesc: "Please specify either -to-yaml or -to-ssh or -to-json",
+			name:       "Multiple flags are true",
+			args:       Cmd.Args{ToJSON: true, ToSSH: true, ToYAML: false},
+			wantResult: false,
+			wantDesc:   "Please specify either -to-yaml or -to-ssh or -to-json",
 		},
 		{
-			name:     "ToJSON and ToYAML true",
-			args:     Cmd.Args{ToJSON: true, ToSSH: false, ToYAML: true},
-			wantBool: false,
-			wantDesc: "Please specify either -to-yaml or -to-ssh or -to-json",
-		},
-		{
-			name:     "ToSSH and ToYAML true",
-			args:     Cmd.Args{ToJSON: false, ToSSH: true, ToYAML: true},
-			wantBool: false,
-			wantDesc: "Please specify either -to-yaml or -to-ssh or -to-json",
-		},
-		{
-			name:     "All true",
-			args:     Cmd.Args{ToJSON: true, ToSSH: true, ToYAML: true},
-			wantBool: false,
-			wantDesc: "Please specify either -to-yaml or -to-ssh or -to-json",
+			name:       "All flags are true",
+			args:       Cmd.Args{ToJSON: true, ToSSH: true, ToYAML: true},
+			wantResult: false,
+			wantDesc:   "Please specify either -to-yaml or -to-ssh or -to-json",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotBool, gotDesc := Cmd.CheckConvertArgvValid(tt.args)
-			if gotBool != tt.wantBool {
-				t.Errorf("CheckConvertArgvValid() gotBool = %v, want %v", gotBool, tt.wantBool)
+			gotResult, gotDesc := Cmd.CheckConvertArgvValid(tt.args)
+			if gotResult != tt.wantResult {
+				t.Errorf("CheckConvertArgvValid() gotResult = %v, want %v", gotResult, tt.wantResult)
 			}
 			if gotDesc != tt.wantDesc {
 				t.Errorf("CheckConvertArgvValid() gotDesc = %v, want %v", gotDesc, tt.wantDesc)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -86,4 +87,49 @@ func DetectStringType(input string) string {
 		return "YAML"
 	}
 	return "TEXT"
+}
+
+func GetPathContent(src string) ([]byte, error) {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return nil, fmt.Errorf("can not get source info: %v", err)
+	}
+
+	var content []byte
+
+	if srcInfo.IsDir() {
+		files, err := os.ReadDir(src)
+		if err != nil {
+			return nil, fmt.Errorf("can not read source directory: %v", err)
+		}
+
+		for _, file := range files {
+			if !file.IsDir() {
+				filePath := filepath.Join(src, file.Name())
+				fileContent, err := os.ReadFile(filePath)
+				if err != nil {
+					return nil, fmt.Errorf("can not read file %s: %v", filePath, err)
+				}
+				content = append(content, fileContent...)
+			}
+		}
+	} else {
+		content, err = os.ReadFile(src)
+		if err != nil {
+			return nil, fmt.Errorf("can not read source file: %v", err)
+		}
+	}
+	return content, nil
+}
+
+func Save(dest string, content []byte) error {
+	destDir := filepath.Dir(dest)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("can not create destination directory: %v", err)
+	}
+
+	if err := os.WriteFile(dest, content, 0644); err != nil {
+		return fmt.Errorf("can not write to destination file: %v", err)
+	}
+	return nil
 }

@@ -1,10 +1,12 @@
 package fn_test
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -444,4 +446,172 @@ age: thirty
 			}
 		})
 	}
+}
+
+func TestGetPathContent(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	singleFile := filepath.Join(tempDir, "single.txt")
+	singleContent := []byte("This is a single file")
+	err = os.WriteFile(singleFile, singleContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create single file: %v", err)
+	}
+
+	content, err := Fn.GetPathContent(singleFile)
+	if err != nil {
+		t.Errorf("GetPathContent failed for single file: %v", err)
+	}
+	if !reflect.DeepEqual(content, singleContent) {
+		t.Errorf("Expected %s, got %s", singleContent, content)
+	}
+
+	multiDir := filepath.Join(tempDir, "multi")
+	err = os.Mkdir(multiDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create multi dir: %v", err)
+	}
+
+	file1 := filepath.Join(multiDir, "file1.txt")
+	file2 := filepath.Join(multiDir, "file2.txt")
+	content1 := []byte("Content of file 1")
+	content2 := []byte("Content of file 2")
+
+	err = os.WriteFile(file1, content1, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create file1: %v", err)
+	}
+	err = os.WriteFile(file2, content2, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create file2: %v", err)
+	}
+
+	content, err = Fn.GetPathContent(multiDir)
+	if err != nil {
+		t.Errorf("GetPathContent failed for directory: %v", err)
+	}
+	expectedContent := append(content1, content2...)
+	if !reflect.DeepEqual(content, expectedContent) {
+		t.Errorf("Expected %s, got %s", expectedContent, content)
+	}
+
+	nonExistentPath := filepath.Join(tempDir, "non_existent")
+	_, err = Fn.GetPathContent(nonExistentPath)
+	if err == nil {
+		t.Error("Expected error for non-existent path, got nil")
+	}
+
+	unreadableDir := filepath.Join(tempDir, "unreadable")
+	err = os.Mkdir(unreadableDir, 0000)
+	if err != nil {
+		t.Fatalf("Failed to create unreadable dir: %v", err)
+	}
+	defer os.Chmod(unreadableDir, 0755)
+
+	_, err = Fn.GetPathContent(unreadableDir)
+	if err == nil {
+		t.Error("Expected error for unreadable directory, got nil")
+	}
+
+	dirWithUnreadableFile := filepath.Join(tempDir, "dir_with_unreadable")
+	err = os.Mkdir(dirWithUnreadableFile, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create dir_with_unreadable: %v", err)
+	}
+
+	unreadableFile := filepath.Join(dirWithUnreadableFile, "unreadable.txt")
+	err = os.WriteFile(unreadableFile, []byte("Unreadable content"), 0000)
+	if err != nil {
+		t.Fatalf("Failed to create unreadable file: %v", err)
+	}
+	defer os.Chmod(unreadableFile, 0644)
+
+	_, err = Fn.GetPathContent(dirWithUnreadableFile)
+	if err == nil {
+		t.Error("Expected error for directory with unreadable file, got nil")
+	}
+
+	unreadableFile2 := filepath.Join(tempDir, "unreadable_single.txt")
+	err = os.WriteFile(unreadableFile2, []byte("Unreadable content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create unreadable single file: %v", err)
+	}
+
+	err = os.Chmod(unreadableFile2, 0000)
+	if err != nil {
+		t.Fatalf("Failed to change file permissions: %v", err)
+	}
+	defer os.Chmod(unreadableFile2, 0644)
+
+	_, err = Fn.GetPathContent(unreadableFile2)
+	if err == nil {
+		t.Error("Expected error for unreadable single file, got nil")
+	} else if !strings.Contains(err.Error(), "can not read source file") {
+		t.Errorf("Expected error message to contain 'can not read source file', got: %v", err)
+	}
+}
+
+func TestSave(t *testing.T) {
+	testDir := filepath.Join(os.TempDir(), "test_save")
+	defer os.RemoveAll(testDir)
+
+	t.Run("successful save", func(t *testing.T) {
+		dest := filepath.Join(testDir, "subdir", "test.txt")
+		content := []byte("test content")
+
+		err := Fn.Save(dest, content)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		savedContent, err := os.ReadFile(dest)
+		if err != nil {
+			t.Fatalf("Failed to read saved file: %v", err)
+		}
+		if !bytes.Equal(content, savedContent) {
+			t.Fatalf("Saved content does not match. Expected %s, got %s", content, savedContent)
+		}
+	})
+
+	t.Run("fail to create directory", func(t *testing.T) {
+		readOnlyDir := filepath.Join(testDir, "readonly")
+		err := os.MkdirAll(readOnlyDir, 0500)
+		if err != nil {
+			t.Fatalf("Failed to create read-only directory: %v", err)
+		}
+
+		dest := filepath.Join(readOnlyDir, "subdir", "test.txt")
+		content := []byte("test content")
+
+		err = Fn.Save(dest, content)
+		if err == nil {
+			t.Fatal("Expected an error, got nil")
+		}
+		if !strings.Contains(err.Error(), "can not create destination directory") {
+			t.Fatalf("Unexpected error message: %v", err)
+		}
+	})
+
+	t.Run("fail to write file", func(t *testing.T) {
+		readOnlyDir := filepath.Join(testDir, "readonly_write")
+		err := os.MkdirAll(readOnlyDir, 0500)
+		if err != nil {
+			t.Fatalf("Failed to create read-only directory: %v", err)
+		}
+
+		dest := filepath.Join(readOnlyDir, "test.txt")
+		content := []byte("test content")
+
+		err = Fn.Save(dest, content)
+		if err == nil {
+			t.Fatal("Expected an error, got nil")
+		}
+		if !strings.Contains(err.Error(), "can not write to destination file") {
+			t.Fatalf("Unexpected error message: %v", err)
+		}
+	})
 }

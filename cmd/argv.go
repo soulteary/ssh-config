@@ -50,7 +50,18 @@ func CheckUseStdin(osStdinStat func() (fs.FileInfo, error)) bool {
 }
 
 func CheckConvertArgvValid(args Args) (result bool, desc string) {
-	if (args.ToJSON && args.ToSSH) || (args.ToJSON && args.ToYAML) || (args.ToSSH && args.ToYAML) {
+	trueCount := 0
+	if args.ToJSON {
+		trueCount++
+	}
+	if args.ToSSH {
+		trueCount++
+	}
+	if args.ToYAML {
+		trueCount++
+	}
+
+	if trueCount != 1 {
 		return false, "Please specify either -to-yaml or -to-ssh or -to-json"
 	}
 
@@ -63,20 +74,12 @@ func CheckIOArgvValid(args Args) (result bool, desc string) {
 	}
 
 	// Check if src exists
-	srcInfo, err := os.Stat(args.Src)
+	_, err := os.Stat(args.Src)
 	if os.IsNotExist(err) {
 		return false, fmt.Sprintf("Error: Source path '%s' does not exist", args.Src)
 	}
 
-	// Check if src is a file or directory
-	if srcInfo.IsDir() {
-		fmt.Printf("Source '%s' is a directory\n", args.Src)
-	} else {
-		fmt.Printf("Source '%s' is a file\n", args.Src)
-	}
-
 	// Check if dist exists
-	// distInfo, err := os.Stat(args.Dest)
 	_, err = os.Stat(args.Dest)
 	if os.IsNotExist(err) {
 		// If dist doesn't exist, check if its parent directory exists
@@ -85,16 +88,7 @@ func CheckIOArgvValid(args Args) (result bool, desc string) {
 		if os.IsNotExist(err) {
 			return false, fmt.Sprintf("Error: Parent directory of destination '%s' does not exist", args.Dest)
 		}
-		fmt.Printf("Destination '%s' does not exist, but its parent directory does\n", args.Dest)
-		// } else {
-		// 	if distInfo.IsDir() {
-		// 		fmt.Printf("Destination '%s' is an existing directory\n", args.Dest)
-		// 	} else {
-		// 		fmt.Printf("Destination '%s' is an existing file\n", args.Dest)
-		// 	}
 	}
-
-	fmt.Println("All checks passed successfully")
 
 	return true, ""
 }

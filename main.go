@@ -47,8 +47,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	pipeMode := Cmd.CheckUseStdin(os.Stdin.Stat)
 	userInput := ""
-	if Cmd.CheckUseStdin(os.Stdin.Stat) {
+	if pipeMode {
 		userInput = Fn.GetUserInputFromStdin()
 	} else {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
@@ -56,11 +57,28 @@ func main() {
 			fmt.Println(notValidReason)
 			os.Exit(1)
 		}
-		fmt.Println("Use Files")
+
+		content, err := Fn.GetPathContent(args.Src)
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			os.Exit(1)
+		}
+		userInput = string(content)
 	}
 
 	fileType := Fn.DetectStringType(userInput)
 	result := Process(fileType, userInput, args)
-	fmt.Println(string(result))
-	os.Exit(0)
+	fmt.Println(fileType, result)
+
+	if pipeMode {
+		fmt.Println(string(result))
+	} else {
+		fmt.Println("Saving file to", args.Dest)
+		fmt.Println("Result:", string(result))
+		err := Fn.Save(args.Dest, result)
+		if err != nil {
+			fmt.Println("Error saving file:", err)
+			os.Exit(1)
+		}
+	}
 }
