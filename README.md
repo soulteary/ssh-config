@@ -1,3 +1,86 @@
 # SSH Config Tool
 
-Use more expressive Yaml/JSON to manage your Config files.
+**[中文文档](./README_CN.md)**
+
+SSH Config Tool is a command-line utility for managing SSH configuration files. It allows you to manage your SSH config files using more expressive YAML/JSON formats.
+
+## Features
+
+- Supports conversion from YAML/JSON format to standard SSH config format
+- Supports conversion from standard SSH config format to YAML/JSON format
+- Supports reading configuration from files or standard input (stdin)
+- Supports output to files or standard output (stdout)
+- Automatically detects input format (YAML/JSON/SSH Config)
+
+## Installation
+
+```bash
+go get github.com/soulteary/ssh-config
+```
+
+## Usage
+
+### Basic Usage
+
+```bash
+ssh-config [options] <input_file> <output_file>
+```
+
+Or, use Linux pipes to manipulate files:
+
+```bash
+cat input_file | ssh-config -to-yaml > output_file
+```
+
+### Options
+
+- `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
+- `-src`: Specify the original configuration file or directory to read from
+- `-dest`: Specify the path to save the configuration file
+- `-help`: View program command-line help
+
+### Examples
+
+1. Convert YAML format to SSH config format:
+
+```bash
+ssh-config -to-ssh -src input.yaml -dest output.conf
+```
+
+2. Convert SSH config format to JSON format:
+
+```bash
+ssh-config -to-json -src ~/.ssh/config -dest output.json
+```
+
+3. Read from standard input, output to standard output, and save in YAML format:
+
+```bash
+cat input.conf | ssh-config -to-yaml > output.yaml
+```
+
+## Development
+
+### Dependencies
+
+- Go 1.23+
+
+### Build
+
+```bash
+go build
+```
+
+### Test
+
+```bash
+go test -v ./... -covermode=atomic -coverprofile=coverage.out && go tool cover -html=coverage.out -o coverage.html
+```
+
+## Contributing
+
+Issues and pull requests are welcome.
+
+## License
+
+This project is licensed under the Apache License. See the [LICENSE](./LICENSE) file for details.
