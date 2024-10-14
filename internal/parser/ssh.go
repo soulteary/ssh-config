@@ -14,7 +14,7 @@ type SSHHostConfigGroup struct {
 	Config   map[string]string
 }
 
-func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
+func GroupSSHConfigFromString(input string) map[string]SSHHostConfigGroup {
 	hostConfigs := make(map[string]SSHHostConfigGroup)
 	var currentHost string
 	var currentComments []string
@@ -46,6 +46,23 @@ func GroupSSHConfig(input string) map[string]SSHHostConfigGroup {
 		}
 	}
 
+	return hostConfigs
+}
+
+func GroupSSHConfig(userInput string) []Define.HostConfig {
+	configs := GroupSSHConfigFromString(userInput)
+	hostConfigs := make([]Define.HostConfig, 0)
+	for host, hostConfig := range configs {
+		rawInfo := GetSSHConfigContent(host, hostConfig)
+		hostInfo := ParseSSHConfig(rawInfo.Config, rawInfo.Comments)
+		config, name, notes := GetSingleHostData(hostInfo)
+
+		hostConfigs = append(hostConfigs, Define.HostConfig{
+			Name:   name,
+			Notes:  notes,
+			Config: config,
+		})
+	}
 	return hostConfigs
 }
 

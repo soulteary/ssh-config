@@ -11,45 +11,45 @@ import (
 	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
 
-func TestGroupSSHConfig(t *testing.T) {
+func TestGroupSSHConfigFromString(t *testing.T) {
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		t.Errorf("TestGroupSSHConfig() error = %v", err)
+		t.Errorf("GroupSSHConfigFromString() error = %v", err)
 	}
 
 	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-ssh-group.cfg"))
 	if err != nil {
-		t.Errorf("TestGroupSSHConfig() error = %v", err)
+		t.Errorf("GroupSSHConfigFromString() error = %v", err)
 	}
 
-	actual := Parser.GroupSSHConfig(string(buf))
+	actual := Parser.GroupSSHConfigFromString(string(buf))
 	if len(actual) != 3 {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", len(actual), 3)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual), 3)
 	}
 
 	if _, ok := actual["server-cn-1"]; !ok {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", ok, true)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", ok, true)
 	}
 
 	if len(actual["server-cn-1"].Comments) == 0 {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", len(actual["server-cn-1"].Comments), 1)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual["server-cn-1"].Comments), 1)
 	}
 
 	if _, ok := actual["server-us-2"]; !ok {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", ok, true)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", ok, true)
 	}
 
 	if len(actual["server-us-2"].Comments) == 0 {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", len(actual["server-us-2"].Comments), 1)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual["server-us-2"].Comments), 1)
 	}
 
 	if _, ok := actual["server-sg-3"]; !ok {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", ok, true)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", ok, true)
 	}
 
 	if len(actual["server-sg-3"].Comments) == 0 {
-		t.Errorf("TestGroupSSHConfig() = %v, want %v", len(actual["server-sg-3"].Comments), 1)
+		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual["server-sg-3"].Comments), 1)
 	}
 }
 
@@ -343,6 +343,63 @@ func TestConvertToSSH(t *testing.T) {
 			result := Parser.ConvertToSSH(tt.input)
 			if !reflect.DeepEqual(string(result), tt.expected) {
 				t.Errorf("ConvertToSSH() = \n```\n%v\n```\n, want ```\n%v\n```\n", string(result), tt.expected)
+			}
+		})
+	}
+}
+
+func TestGroupSSHConfig(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []Define.HostConfig
+	}{
+		{
+			name: "Valid input",
+			input: `
+Host example1
+    HostName 192.168.1.1
+    User user1
+    Port 22
+
+Host example2
+    HostName 192.168.1.2
+    User user2
+    Port 2222
+`,
+			expected: []Define.HostConfig{
+				{
+					Name:  "example1",
+					Notes: "",
+					Config: map[string]string{
+						"HostName": "192.168.1.1",
+						"Port":     "22",
+						"User":     "user1",
+					},
+				},
+				{
+					Name:  "example2",
+					Notes: "",
+					Config: map[string]string{
+						"HostName": "192.168.1.2",
+						"Port":     "2222",
+						"User":     "user2",
+					},
+				},
+			},
+		},
+		{
+			name:     "Empty input",
+			input:    "",
+			expected: []Define.HostConfig{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Parser.GroupSSHConfig(tt.input)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("GroupSSHConfig() = %v, want %v", result, tt.expected)
 			}
 		})
 	}
