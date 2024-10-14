@@ -105,6 +105,30 @@ func TestRun(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "File read error with print",
+			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return nil, errors.New("read error") },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
+		},
+		{
+			name: "File save error with print",
+			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
+				SaveFile:      func(string, []byte) error { return errors.New("save error") },
+				Process:       func(string, string, Cmd.Args) []byte { return jsonContent },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
