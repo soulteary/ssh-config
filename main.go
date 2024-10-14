@@ -64,21 +64,24 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	return nil
 }
 
-var deps = Dependencies{
-	StdinStat:             os.Stdin.Stat,
-	Exit:                  os.Exit,
-	Println:               fmt.Println,
-	GetContent:            Fn.GetPathContent,
-	SaveFile:              Fn.Save,
-	GetUserInputFromStdin: Fn.GetUserInputFromStdin,
-	Process:               Parser.Process,
-	CheckUseStdin:         func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
-}
-
-func main() {
+func MainWithDependencies(exit func(int)) {
+	deps := Dependencies{
+		StdinStat:             os.Stdin.Stat,
+		Exit:                  os.Exit,
+		Println:               fmt.Println,
+		GetContent:            Fn.GetPathContent,
+		SaveFile:              Fn.Save,
+		GetUserInputFromStdin: Fn.GetUserInputFromStdin,
+		Process:               Parser.Process,
+		CheckUseStdin:         func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
+	}
 	args := Cmd.ParseArgs()
 	if err := Run(args, deps); err != nil {
-		deps.Println("Error:", err)
-		deps.Exit(1)
+		fmt.Println("Error:", err)
+		exit(1)
 	}
+}
+
+func Main() {
+	MainWithDependencies(os.Exit)
 }
