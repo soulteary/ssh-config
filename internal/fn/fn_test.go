@@ -694,3 +694,61 @@ func TestGetJSONData(t *testing.T) {
 		})
 	}
 }
+
+func TestTidyLastEmptyLines(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []byte
+		expected []byte
+	}{
+		{
+			name:     "Empty input",
+			input:    []byte{},
+			expected: []byte{},
+		},
+		{
+			name:     "No empty lines at the end",
+			input:    []byte("Hello\nWorld"),
+			expected: []byte("Hello\nWorld"),
+		},
+		{
+			name:     "Single newline at the end",
+			input:    []byte("Hello\nWorld\n"),
+			expected: []byte("Hello\nWorld"),
+		},
+		{
+			name:     "Multiple newlines at the end",
+			input:    []byte("Hello\nWorld\n\n\n"),
+			expected: []byte("Hello\nWorld"),
+		},
+		{
+			name:     "Mixed newline characters at the end",
+			input:    []byte("Hello\nWorld\n\r\n"),
+			expected: []byte("Hello\nWorld"),
+		},
+		{
+			name:     "Only newlines",
+			input:    []byte("\n\n\n"),
+			expected: []byte{},
+		},
+		{
+			name:     "Only carriage returns",
+			input:    []byte("\r\r\r"),
+			expected: []byte{},
+		},
+		{
+			name:     "Mixed newlines and content",
+			input:    []byte("Hello\n\nWorld\n\n"),
+			expected: []byte("Hello\n\nWorld"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fn.TidyLastEmptyLines(tt.input)
+			if !bytes.Equal(result, tt.expected) {
+				t.Errorf("TidyLastEmptyLines() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}

@@ -24,15 +24,15 @@ func Process(fileType string, userInput string, args Cmd.Args) []byte {
 	}
 
 	if args.ToYAML {
-		return Parser.ConvertToYAML(hostConfigs)
+		return Fn.TidyLastEmptyLines(Parser.ConvertToYAML(hostConfigs))
 	}
 
 	if args.ToSSH {
-		return Parser.ConvertToSSH(hostConfigs)
+		return Fn.TidyLastEmptyLines(Parser.ConvertToSSH(hostConfigs))
 	}
 
 	if args.ToJSON {
-		return Parser.ConvertToJSON(hostConfigs)
+		return Fn.TidyLastEmptyLines(Parser.ConvertToJSON(hostConfigs))
 	}
 	return nil
 }

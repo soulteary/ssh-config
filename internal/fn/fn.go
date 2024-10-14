@@ -142,3 +142,15 @@ func Save(dest string, content []byte) error {
 	}
 	return nil
 }
+
+func TidyLastEmptyLines(input []byte) []byte {
+	if len(input) == 0 {
+		return input
+	}
+
+	end := len(input) - 1
+	for end >= 0 && (input[end] == '\n' || input[end] == '\r') {
+		end--
+	}
+	return input[:end+1]
+}
