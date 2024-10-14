@@ -1,90 +1,86 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
+	Cmd "github.com/soulteary/ssh-config/cmd"
 	Define "github.com/soulteary/ssh-config/internal/define"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
 	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
 
-func CheckUseStdin() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		fmt.Println("Error getting stdin stat:", err)
-		return false
+func Process(fileType string, userInput string, args Cmd.Args) []byte {
+	switch strings.ToUpper(fileType) {
+	case "YAML":
+		hostConfigs := Parser.GroupYAMLConfig(userInput)
+
+		if args.ToYAML {
+			return Parser.ConvertToYAML(hostConfigs)
+		}
+
+		if args.ToSSH {
+			return Parser.ConvertToSSH(hostConfigs)
+		}
+
+		if args.ToJSON {
+			return Parser.ConvertToJSON(hostConfigs)
+		}
+	case "JSON":
+		fmt.Println("JSON")
+	case "TEXT":
+		configs := Parser.GroupSSHConfig(userInput)
+		hostConfigs := make([]Define.HostConfig, 0)
+		for host, hostConfig := range configs {
+			rawInfo := Parser.GetSSHConfigContent(host, hostConfig)
+			hostInfo := Parser.ParseSSHConfig(rawInfo.Config, rawInfo.Comments)
+			config, name, notes := Parser.GetSingleHostData(hostInfo)
+
+			hostConfigs = append(hostConfigs, Define.HostConfig{
+				Name:   name,
+				Notes:  notes,
+				Config: config,
+			})
+		}
+
+		if args.ToYAML {
+			return Parser.ConvertToYAML(hostConfigs)
+		}
+
+		if args.ToSSH {
+			return Parser.ConvertToSSH(hostConfigs)
+		}
+
+		if args.ToJSON {
+			return Parser.ConvertToJSON(hostConfigs)
+		}
 	}
-	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		return true
-	}
-	return false
+	return nil
 }
 
 func main() {
-	toYAML := flag.Bool("to-yaml", false, "Convert SSH config(Text/JSON) to YAML")
-	toSSH := flag.Bool("to-ssh", false, "Convert SSH config(YAML/JSON) to YAML")
-	toJSON := flag.Bool("to-json", false, "Convert SSH config(YAML/Text) to JSON")
-
-	flag.Parse()
-
-	if (*toYAML == *toSSH && *toYAML == *toJSON) || (*toSSH == *toJSON && *toSSH == *toYAML) || (*toJSON == *toYAML && *toJSON == *toSSH) {
-		fmt.Println("Please specify either -to-yaml or -to-ssh or -to-json")
+	args := Cmd.ParseArgs()
+	isValid, validReason := Cmd.CheckConvertArgvValid(args)
+	if !isValid {
+		fmt.Println(validReason)
 		os.Exit(1)
 	}
 
-	if CheckUseStdin() {
-		input := Fn.GetUserInputFromStdin()
-		fileType := Fn.DetectStringType(input)
-
-		switch strings.ToUpper(fileType) {
-		case "YAML":
-			hostConfigs := Parser.GroupYAMLConfig(input)
-
-			if *toYAML {
-				fmt.Println(string(Parser.ConvertToYAML(hostConfigs)))
-			}
-
-			if *toSSH {
-				fmt.Println(string(Parser.ConvertToSSH(hostConfigs)))
-			}
-
-			if *toJSON {
-				fmt.Println(string(Parser.ConvertToJSON(hostConfigs)))
-			}
-		case "JSON":
-			fmt.Println("JSON")
-		case "TEXT":
-			configs := Parser.GroupSSHConfig(input)
-			hostConfigs := make([]Define.HostConfig, 0)
-			for host, hostConfig := range configs {
-				rawInfo := Parser.GetSSHConfigContent(host, hostConfig)
-				hostInfo := Parser.ParseSSHConfig(rawInfo.Config, rawInfo.Comments)
-				config, name, notes := Parser.GetSingleHostData(hostInfo)
-
-				hostConfigs = append(hostConfigs, Define.HostConfig{
-					Name:   name,
-					Notes:  notes,
-					Config: config,
-				})
-			}
-
-			if *toYAML {
-				fmt.Println(string(Parser.ConvertToYAML(hostConfigs)))
-			}
-
-			if *toSSH {
-				fmt.Println(string(Parser.ConvertToSSH(hostConfigs)))
-			}
-
-			if *toJSON {
-				fmt.Println(string(Parser.ConvertToJSON(hostConfigs)))
-			}
-		}
+	userInput := ""
+	if Cmd.CheckUseStdin(os.Stdin.Stat) {
+		userInput = Fn.GetUserInputFromStdin()
 	} else {
+		isValid, validReason := Cmd.CheckIOArgvValid(args)
+		if !isValid {
+			fmt.Println(validReason)
+			os.Exit(1)
+		}
 		fmt.Println("Use Files")
 	}
+
+	fileType := Fn.DetectStringType(userInput)
+	result := Process(fileType, userInput, args)
+	fmt.Println(string(result))
 	os.Exit(0)
 }
