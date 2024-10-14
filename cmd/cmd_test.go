@@ -3,7 +3,6 @@ package cmd_test
 import (
 	"bytes"
 	"errors"
-	"flag"
 	"io"
 	"io/fs"
 	"os"
@@ -16,79 +15,6 @@ import (
 	Cmd "github.com/soulteary/ssh-config/cmd"
 )
 
-func TestParseArgs(t *testing.T) {
-	// 保存原始的 os.Args
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
-	tests := []struct {
-		name     string
-		args     []string
-		expected Cmd.Args
-	}{
-		{
-			name: "Test to-yaml flag",
-			args: []string{"cmd", "-to-yaml"},
-			expected: Cmd.Args{
-				ToYAML: true,
-			},
-		},
-		{
-			name: "Test to-ssh flag",
-			args: []string{"cmd", "-to-ssh"},
-			expected: Cmd.Args{
-				ToSSH: true,
-			},
-		},
-		{
-			name: "Test to-json flag",
-			args: []string{"cmd", "-to-json"},
-			expected: Cmd.Args{
-				ToJSON: true,
-			},
-		},
-		{
-			name: "Test src and dest flags",
-			args: []string{"cmd", "-src", "input.txt", "-dest", "output.txt"},
-			expected: Cmd.Args{
-				Src:  "input.txt",
-				Dest: "output.txt",
-			},
-		},
-		{
-			name: "Test help flag",
-			args: []string{"cmd", "-help"},
-			expected: Cmd.Args{
-				ShowHelp: true,
-			},
-		},
-		{
-			name: "Test multiple flags",
-			args: []string{"cmd", "-to-yaml", "-src", "input.yaml", "-dest", "output.txt"},
-			expected: Cmd.Args{
-				ToYAML: true,
-				Src:    "input.yaml",
-				Dest:   "output.txt",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// 设置命令行参数
-			os.Args = tt.args
-
-			// 重置 flag 包的状态，因为 flag.Parse() 只能被调用一次
-			flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-
-			result := Cmd.ParseArgs()
-
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("ParseArgs() = %v, want %v", result, tt.expected)
-			}
-		})
-	}
-}
 func TestCheckConvertArgvValid(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -288,5 +214,119 @@ func TestShowHelp(t *testing.T) {
 
 	if strings.TrimSpace(capturedOutput) != strings.TrimSpace(expectedOutput) {
 		t.Errorf("ShowHelp() output does not match expected output.\nExpected:\n%s\nGot:\n%s", expectedOutput, capturedOutput)
+	}
+}
+
+func TestParseArgs(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		expected Cmd.Args
+	}{
+		{
+			name: "Default values",
+			args: []string{},
+			expected: Cmd.Args{
+				ToYAML:   Cmd.DEFAULT_TO_YAML,
+				ToSSH:    Cmd.DEFAULT_TO_SSH,
+				ToJSON:   Cmd.DEFAULT_TO_JSON,
+				Src:      Cmd.DEFAULT_SRC,
+				Dest:     Cmd.DEFAULT_DEST,
+				ShowHelp: Cmd.DEFAULT_HELP,
+			},
+		},
+		{
+			name: "Set all flags",
+			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-src", "source.txt", "-dest", "destination.txt", "-help"},
+			expected: Cmd.Args{
+				ToYAML:   true,
+				ToSSH:    true,
+				ToJSON:   true,
+				Src:      "source.txt",
+				Dest:     "destination.txt",
+				ShowHelp: true,
+			},
+		},
+		{
+			name: "Set some flags",
+			args: []string{"-to-yaml", "-src", "input.yaml"},
+			expected: Cmd.Args{
+				ToYAML:   true,
+				ToSSH:    false,
+				ToJSON:   false,
+				Src:      "input.yaml",
+				Dest:     "",
+				ShowHelp: false,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Save original os.Args
+			oldArgs := os.Args
+			defer func() { os.Args = oldArgs }()
+
+			// Set up new os.Args for the test
+			os.Args = append([]string{"cmd"}, tt.args...)
+
+			// Reset flags before each test
+			Cmd.ResetFlags()
+
+			// Call ParseArgs
+			result := Cmd.ParseArgs()
+
+			// Check if the result matches the expected
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("ParseArgs() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResetFlags(t *testing.T) {
+	// Save original os.Args
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	// Set some flags
+	os.Args = []string{"cmd", "-to-yaml", "-src", "input.yaml"}
+	Cmd.ParseArgs()
+
+	// Reset flags
+	Cmd.ResetFlags()
+
+	os.Args = []string{"cmd", "-to-yaml", "-src", "input2.yaml"}
+
+	// Parse args again
+	result := Cmd.ParseArgs()
+
+	// Check if all flags are reset to default values
+	expected := Cmd.Args{
+		ToYAML:   true,
+		ToSSH:    Cmd.DEFAULT_TO_SSH,
+		ToJSON:   Cmd.DEFAULT_TO_JSON,
+		Src:      "input2.yaml",
+		Dest:     Cmd.DEFAULT_DEST,
+		ShowHelp: Cmd.DEFAULT_HELP,
+	}
+
+	if result.Dest != expected.Dest {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.ShowHelp != expected.ShowHelp {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.Src != expected.Src {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.ToJSON != expected.ToJSON {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.ToSSH != expected.ToSSH {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.ToYAML != expected.ToYAML {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 }

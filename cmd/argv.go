@@ -6,6 +6,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
+)
+
+var (
+	once sync.Once
+	args Args
 )
 
 type Args struct {
@@ -17,24 +23,43 @@ type Args struct {
 	ShowHelp bool
 }
 
-func ParseArgs() (result Args) {
-	toYAML := flag.Bool("to-yaml", false, "Convert SSH config(Text/JSON) to YAML")
-	toSSH := flag.Bool("to-ssh", false, "Convert SSH config(YAML/JSON) to YAML")
-	toJSON := flag.Bool("to-json", false, "Convert SSH config(YAML/Text) to JSON")
-	src := flag.String("src", "", "Source file or directories path, valid when using non-pipeline mode")
-	dest := flag.String("dest", "", "Destination file path, valid when using non-pipeline mode")
-	showHelp := flag.Bool("help", false, "Show help")
+const (
+	DEFAULT_TO_YAML = false
+	DEFAULT_TO_SSH  = false
+	DEFAULT_TO_JSON = false
+	DEFAULT_SRC     = ""
+	DEFAULT_DEST    = ""
+	DEFAULT_HELP    = false
+)
 
-	flag.Parse()
+func initFlags() {
+	flag.BoolVar(&args.ToYAML, "to-yaml", DEFAULT_TO_YAML, "Convert SSH config(Text/JSON) to YAML")
+	flag.BoolVar(&args.ToSSH, "to-ssh", DEFAULT_TO_SSH, "Convert SSH config(YAML/JSON) to YAML")
+	flag.BoolVar(&args.ToJSON, "to-json", DEFAULT_TO_JSON, "Convert SSH config(YAML/Text) to JSON")
+	flag.StringVar(&args.Src, "src", DEFAULT_SRC, "Source file or directories path, valid when using non-pipeline mode")
+	flag.StringVar(&args.Dest, "dest", DEFAULT_DEST, "Destination file path, valid when using non-pipeline mode")
+	flag.BoolVar(&args.ShowHelp, "help", DEFAULT_HELP, "Show help")
+}
 
-	return Args{
-		ToYAML:   *toYAML,
-		ToSSH:    *toSSH,
-		ToJSON:   *toJSON,
-		Src:      *src,
-		Dest:     *dest,
-		ShowHelp: *showHelp,
-	}
+func ParseArgs() Args {
+	once.Do(func() {
+		initFlags()
+		flag.Parse()
+	})
+	return args
+}
+
+func ResetFlags() {
+	flag.CommandLine = flag.NewFlagSet(flag.CommandLine.Name(), flag.ExitOnError)
+	args = Args{
+		ToYAML:   DEFAULT_TO_YAML,
+		ToSSH:    DEFAULT_TO_SSH,
+		ToJSON:   DEFAULT_TO_JSON,
+		Src:      DEFAULT_SRC,
+		Dest:     DEFAULT_DEST,
+		ShowHelp: DEFAULT_HELP,
+	} // Reset the args
+	once = sync.Once{} // Reset the once
 }
 
 func CheckUseStdin(osStdinStat func() (fs.FileInfo, error)) bool {
