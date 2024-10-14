@@ -1,5 +1,7 @@
 # SSH Config Tool
 
+[![codecov](https://codecov.io/gh/soulteary/ssh-config/branch/main/graph/badge.svg?token=W816DX12V8)](https://codecov.io/gh/soulteary/ssh-config) [![Go Report Card](https://goreportcard.com/badge/github.com/soulteary/ssh-config)](https://goreportcard.com/report/github.com/soulteary/ssh-config)
+
 **[English Docs](./README.md)**
 
 SSH Config Tool 是一个用于管理 SSH 配置文件的命令行工具。它允许你使用更具表现力的 YAML/JSON 格式来管理你的 SSH 配置文件。

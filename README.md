@@ -1,5 +1,7 @@
 # SSH Config Tool
 
+[![codecov](https://codecov.io/gh/soulteary/ssh-config/branch/main/graph/badge.svg?token=W816DX12V8)](https://codecov.io/gh/soulteary/ssh-config) [![Go Report Card](https://goreportcard.com/badge/github.com/soulteary/ssh-config)](https://goreportcard.com/report/github.com/soulteary/ssh-config)
+
 **[中文文档](./README_CN.md)**
 
 SSH Config Tool is a command-line utility for managing SSH configuration files. It allows you to manage your SSH config files using more expressive YAML/JSON formats.
