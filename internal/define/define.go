@@ -13,7 +13,13 @@ type HostConfig struct {
 }
 
 // json
-type HostConfigForJSON map[string]string
+type HostConfigDataForJSON map[string]string
+
+type HostConfigForJSON struct {
+	Name  string                `json:"Name,omitempty"`
+	Notes string                `json:"Notes,omitempty"`
+	Data  HostConfigDataForJSON `json:"Data,omitempty"`
+}
 
 // yaml
 type GroupConfig struct {

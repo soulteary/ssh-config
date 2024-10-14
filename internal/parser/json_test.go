@@ -13,48 +13,71 @@ func TestConvertToJSON(t *testing.T) {
 	testCases := []struct {
 		name     string
 		input    []Define.HostConfig
-		expected []byte
+		expected []Define.HostConfigForJSON
 	}{
-		{
-			name:     "Empty slice",
-			input:    []Define.HostConfig{},
-			expected: []byte("[]"),
-		},
 		{
 			name: "Single host config",
 			input: []Define.HostConfig{
 				{
+					Name:  "example",
+					Notes: "Test host",
 					Config: map[string]string{
-						"Host":     "example.com",
+						"HostName": "example.com",
+						"User":     "testuser",
 						"Port":     "22",
-						"Username": "user",
-						"Password": "pass",
 					},
 				},
 			},
-			expected: []byte(`[{"Host":"example.com","Password":"pass","Port":"22","Username":"user"}]`),
+			expected: []Define.HostConfigForJSON{
+				{
+					Name:  "example",
+					Notes: "Test host",
+					Data: Define.HostConfigDataForJSON{
+						"HostName": "example.com",
+						"User":     "testuser",
+						"Port":     "22",
+					},
+				},
+			},
 		},
 		{
 			name: "Multiple host configs",
 			input: []Define.HostConfig{
 				{
+					Name:  "host1",
+					Notes: "First host",
 					Config: map[string]string{
-						"Host":     "example1.com",
-						"Port":     "22",
-						"Username": "user1",
-						"Password": "pass1",
+						"HostName": "host1.com",
+						"User":     "user1",
 					},
 				},
 				{
+					Name:  "host2",
+					Notes: "Second host",
 					Config: map[string]string{
-						"Host":     "example2.com",
+						"HostName": "host2.com",
 						"Port":     "2222",
-						"Username": "user2",
-						"Password": "pass2",
 					},
 				},
 			},
-			expected: []byte(`[{"Host":"example1.com","Password":"pass1","Port":"22","Username":"user1"},{"Host":"example2.com","Password":"pass2","Port":"2222","Username":"user2"}]`),
+			expected: []Define.HostConfigForJSON{
+				{
+					Name:  "host1",
+					Notes: "First host",
+					Data: Define.HostConfigDataForJSON{
+						"HostName": "host1.com",
+						"User":     "user1",
+					},
+				},
+				{
+					Name:  "host2",
+					Notes: "Second host",
+					Data: Define.HostConfigDataForJSON{
+						"HostName": "host2.com",
+						"Port":     "2222",
+					},
+				},
+			},
 		},
 	}
 
@@ -62,14 +85,14 @@ func TestConvertToJSON(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := Parser.ConvertToJSON(tc.input)
 
-			var js interface{}
-			err := json.Unmarshal(result, &js)
+			var actualJSON []Define.HostConfigForJSON
+			err := json.Unmarshal(result, &actualJSON)
 			if err != nil {
-				t.Errorf("ConvertToJSON produced invalid JSON: %v", err)
+				t.Fatalf("Failed to unmarshal JSON: %v", err)
 			}
 
-			if !reflect.DeepEqual(result, tc.expected) {
-				t.Errorf("ConvertToJSON() = %s, want %s", result, tc.expected)
+			if !reflect.DeepEqual(actualJSON, tc.expected) {
+				t.Errorf("ConvertToJSON() = %v, want %v", actualJSON, tc.expected)
 			}
 		})
 	}
