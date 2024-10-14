@@ -3,39 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	Cmd "github.com/soulteary/ssh-config/cmd"
-	"github.com/soulteary/ssh-config/internal/define"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
 	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
-
-func Process(fileType string, userInput string, args Cmd.Args) []byte {
-	var hostConfigs []define.HostConfig
-
-	switch strings.ToUpper(fileType) {
-	case "YAML":
-		hostConfigs = Parser.GroupYAMLConfig(userInput)
-	case "JSON":
-		hostConfigs = Parser.GroupJSONConfig(userInput)
-	case "TEXT":
-		hostConfigs = Parser.GroupSSHConfig(userInput)
-	}
-
-	if args.ToYAML {
-		return Fn.TidyLastEmptyLines(Parser.ConvertToYAML(hostConfigs))
-	}
-
-	if args.ToSSH {
-		return Fn.TidyLastEmptyLines(Parser.ConvertToSSH(hostConfigs))
-	}
-
-	if args.ToJSON {
-		return Fn.TidyLastEmptyLines(Parser.ConvertToJSON(hostConfigs))
-	}
-	return nil
-}
 
 func main() {
 	args := Cmd.ParseArgs()
@@ -65,7 +37,7 @@ func main() {
 	}
 
 	fileType := Fn.DetectStringType(userInput)
-	result := Process(fileType, userInput, args)
+	result := Parser.Process(fileType, userInput, args)
 
 	if pipeMode {
 		fmt.Println(string(result))
