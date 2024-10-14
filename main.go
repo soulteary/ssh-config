@@ -9,45 +9,76 @@ import (
 	Parser "github.com/soulteary/ssh-config/internal/parser"
 )
 
-func main() {
-	args := Cmd.ParseArgs()
+type Dependencies struct {
+	StdinStat             func() (os.FileInfo, error)
+	Exit                  func(int)
+	Println               func(...interface{}) (n int, err error)
+	GetContent            func(string) ([]byte, error)
+	SaveFile              func(string, []byte) error
+	GetUserInputFromStdin func() string
+	Process               func(string, string, Cmd.Args) []byte
+	CheckUseStdin         func() bool
+}
+
+func Run(args Cmd.Args, deps Dependencies) error {
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
-		fmt.Println(notValidReason)
-		os.Exit(1)
+		deps.Println(notValidReason)
+		return fmt.Errorf(notValidReason)
 	}
 
-	pipeMode := Cmd.CheckUseStdin(os.Stdin.Stat)
-	userInput := ""
+	pipeMode := deps.CheckUseStdin()
+	var userInput string
 	if pipeMode {
-		userInput = Fn.GetUserInputFromStdin()
+		userInput = deps.GetUserInputFromStdin()
 	} else {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
 		if !isValid {
-			fmt.Println(notValidReason)
-			os.Exit(1)
+			deps.Println(notValidReason)
+			return fmt.Errorf(notValidReason)
 		}
 
-		content, err := Fn.GetPathContent(args.Src)
+		content, err := deps.GetContent(args.Src)
 		if err != nil {
-			fmt.Println("Error reading file:", err)
-			os.Exit(1)
+			deps.Println("Error reading file:", err)
+			return err
 		}
 		userInput = string(content)
 	}
 
 	fileType := Fn.DetectStringType(userInput)
-	result := Parser.Process(fileType, userInput, args)
+	result := deps.Process(fileType, userInput, args)
 
 	if pipeMode {
-		fmt.Println(string(result))
+		deps.Println(string(result))
 	} else {
-		err := Fn.Save(args.Dest, result)
+		err := deps.SaveFile(args.Dest, result)
 		if err != nil {
-			fmt.Println("Error saving file:", err)
-			os.Exit(1)
+			deps.Println("Error saving file:", err)
+			return err
 		}
-		fmt.Println("File has been saved successfully")
-		fmt.Println("File path:", args.Dest)
+		deps.Println("File has been saved successfully")
+		deps.Println("File path:", args.Dest)
+	}
+
+	return nil
+}
+
+var deps = Dependencies{
+	StdinStat:             os.Stdin.Stat,
+	Exit:                  os.Exit,
+	Println:               fmt.Println,
+	GetContent:            Fn.GetPathContent,
+	SaveFile:              Fn.Save,
+	GetUserInputFromStdin: Fn.GetUserInputFromStdin,
+	Process:               Parser.Process,
+	CheckUseStdin:         func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
+}
+
+func main() {
+	args := Cmd.ParseArgs()
+	if err := Run(args, deps); err != nil {
+		deps.Println("Error:", err)
+		deps.Exit(1)
 	}
 }

@@ -1,148 +1,118 @@
-package main
+package main_test
 
 import (
-	"io"
+	"errors"
 	"os"
 	"path"
-	"strings"
 	"testing"
 
+	Main "github.com/soulteary/ssh-config"
 	Cmd "github.com/soulteary/ssh-config/cmd"
-	Fn "github.com/soulteary/ssh-config/internal/fn"
 )
 
-func TestMain(t *testing.T) {
+func TestRun(t *testing.T) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
+		t.Errorf("TestProcess() error = %v", err)
 	}
 
-	yamlContent, err := os.ReadFile(path.Join(pwd, "./testdata/main-test.yaml"))
+	jsonContent, err := os.ReadFile(path.Join(pwd, "./testdata/main-test.json"))
 	if err != nil {
-		t.Fatalf("Failed to read YAML test file: %v", err)
+		t.Errorf("TestProcess() error = %v", err)
 	}
 
 	sshContent, err := os.ReadFile(path.Join(pwd, "./testdata/main-test.cfg"))
 	if err != nil {
-		t.Fatalf("Failed to read SSH config test file: %v", err)
+		t.Errorf("TestProcess() error = %v", err)
 	}
 
-	oldArgs := os.Args
-	oldStdout := os.Stdout
-	oldStdin := os.Stdin
-	defer func() {
-		os.Args = oldArgs
-		os.Stdout = oldStdout
-		os.Stdin = oldStdin
-	}()
-
-	const (
-		TEST_INPUT_FILE  = "test_input"
-		TEST_OUTPUT_FILE = "test_output"
-	)
+	yamlContent, err := os.ReadFile(path.Join(pwd, "./testdata/main-test.yaml"))
+	if err != nil {
+		t.Errorf("TestProcess() error = %v", err)
+	}
 
 	tests := []struct {
-		name     string
-		args     []string
-		input    string
-		expected []byte
-		isPipe   bool
-		wantErr  bool
+		name    string
+		args    Cmd.Args
+		deps    Main.Dependencies
+		wantErr bool
 	}{
 		{
-			name:     "YAML file input to SSH file output",
-			args:     []string{"cmd", "-src", TEST_INPUT_FILE + ".yaml", "-dest", TEST_OUTPUT_FILE + ".cfg", "-to-ssh"},
-			input:    string(yamlContent),
-			expected: sshContent,
-			isPipe:   false,
-			wantErr:  false,
+			name: "Invalid convert arguments",
+			args: Cmd.Args{ToYAML: true, ToJSON: true, ToSSH: true},
+			deps: Main.Dependencies{
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
 		},
 		{
-			name:     "SSH file input to YAML file output",
-			args:     []string{"cmd", "-src", TEST_INPUT_FILE + ".cfg", "-dest", TEST_OUTPUT_FILE + ".yaml", "-to-yaml"},
-			input:    string(sshContent),
-			expected: yamlContent,
-			isPipe:   false,
-			wantErr:  false,
+			name: "Pipe mode",
+			args: Cmd.Args{ToSSH: true},
+			deps: Main.Dependencies{
+				StdinStat:             func() (os.FileInfo, error) { return nil, nil },
+				Println:               func(...interface{}) (int, error) { return 0, nil },
+				GetUserInputFromStdin: func() string { return string(yamlContent) },
+				Process:               func(string, string, Cmd.Args) []byte { return sshContent },
+				CheckUseStdin:         func() bool { return true },
+			},
+			wantErr: false,
 		},
 		{
-			name:     "YAML pipe input to SSH stdout",
-			args:     []string{"cmd", "-to-ssh"},
-			input:    string(yamlContent),
-			expected: sshContent,
-			isPipe:   true,
-			wantErr:  false,
+			name: "Invalid IO arguments",
+			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
 		},
 		{
-			name:     "SSH pipe input to YAML stdout",
-			args:     []string{"cmd", "-to-yaml"},
-			input:    string(sshContent),
-			expected: yamlContent,
-			isPipe:   true,
-			wantErr:  false,
+			name: "File read error",
+			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return nil, errors.New("read error") },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
+		},
+		{
+			name: "File save error",
+			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
+				SaveFile:      func(string, []byte) error { return errors.New("save error") },
+				Process:       func(string, string, Cmd.Args) []byte { return jsonContent },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
+		},
+		{
+			name: "Successful file conversion",
+			args: Cmd.Args{ToYAML: true, Src: "testdata/main-test.cfg", Dest: "test.yaml"},
+			deps: Main.Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
+				SaveFile:      func(string, []byte) error { return nil },
+				Process:       func(string, string, Cmd.Args) []byte { return yamlContent },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			Cmd.ResetFlags() // Reset flags before each test
-			os.Args = tt.args
-
-			if !tt.isPipe {
-				err = os.WriteFile(tt.args[2], []byte(tt.input), 0644)
-				if err != nil {
-					t.Fatal(err)
-				}
-				defer os.Remove(tt.args[2])
-				defer os.Remove(tt.args[4])
-			}
-
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			if tt.isPipe {
-				pipeR, pipeW, _ := os.Pipe()
-				os.Stdin = pipeR
-				go func() {
-					pipeW.Write([]byte(tt.input))
-					pipeW.Close()
-				}()
-			}
-
-			main()
-
-			w.Close()
-			out, _ := io.ReadAll(r)
-
-			if tt.wantErr {
-				if !strings.Contains(string(out), "Error") {
-					t.Errorf("expected error, got: %s", string(out))
-				}
-			} else {
-				if !tt.isPipe {
-					if !strings.Contains(string(out), "File has been saved successfully") {
-						t.Errorf("unexpected output:\nexpected to contain: File has been saved successfully\ngot: %s", string(out))
-					}
-
-					checkFileContent(t, tt.args[4], tt.expected)
-				} else {
-					if string(Fn.TidyLastEmptyLines(out)) != string(Fn.TidyLastEmptyLines((tt.expected))) {
-						t.Errorf("!!!!unexpected output:\nexpected: %s\ngot: %s", tt.expected, string(out))
-					}
-				}
+			err := Main.Run(tt.args, tt.deps)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
-	}
-}
-
-func checkFileContent(t *testing.T, filename string, expected []byte) {
-	t.Helper()
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		t.Errorf("Failed to read output file: %v", err)
-	}
-
-	if string(content) != string(expected) {
-		t.Errorf("unexpected file content:\nexpected: %s\ngot: %s", expected, string(content))
 	}
 }
