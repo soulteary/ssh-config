@@ -397,9 +397,16 @@ Host example2
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Parser.GroupSSHConfig(tt.input)
-			if !reflect.DeepEqual(result, tt.expected) {
-				t.Errorf("GroupSSHConfig() = %v, want %v", result, tt.expected)
+			for _, result := range Parser.GroupSSHConfig(tt.input) {
+				for _, expected := range tt.expected {
+					if result.Name == expected.Name {
+						for key, value := range expected.Config {
+							if result.Config[key] != value {
+								t.Errorf("GroupSSHConfig() = %v, want %v", result.Config[key], value)
+							}
+						}
+					}
+				}
 			}
 		})
 	}

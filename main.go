@@ -68,17 +68,16 @@ func main() {
 
 	fileType := Fn.DetectStringType(userInput)
 	result := Process(fileType, userInput, args)
-	fmt.Println(fileType, result)
 
 	if pipeMode {
 		fmt.Println(string(result))
 	} else {
-		fmt.Println("Saving file to", args.Dest)
-		fmt.Println("Result:", string(result))
 		err := Fn.Save(args.Dest, result)
 		if err != nil {
 			fmt.Println("Error saving file:", err)
 			os.Exit(1)
 		}
+		fmt.Println("File has been saved successfully")
+		fmt.Println("File path:", args.Dest)
 	}
 }
