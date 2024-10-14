@@ -615,3 +615,82 @@ func TestSave(t *testing.T) {
 		}
 	})
 }
+
+func TestGetJSONData(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestGetJSONData() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/parser-json.json"))
+	if err != nil {
+		t.Errorf("TestGetJSONData() error = %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		input    string
+		expected []Define.HostConfigForJSON
+	}{
+		{
+			name:  "Valid JSON",
+			input: string(buf),
+			expected: []Define.HostConfigForJSON{
+				{
+					Name: "*",
+					Data: Define.HostConfigDataForJSON{
+						"HostKeyAlgorithms":        "+ssh-rsa",
+						"PubkeyAcceptedAlgorithms": "+ssh-rsa",
+					},
+				},
+				{
+					Name:  "server1",
+					Notes: "your notes here",
+					Data: Define.HostConfigDataForJSON{
+						"Compression":    "yes",
+						"ControlPath":    "~/.ssh/server-1-%r@%h:%p",
+						"ControlPersist": "yes",
+						"ForwardAgent":   "yes",
+						"HostName":       "123.123.123.123",
+						"IdentityFile":   "~/.ssh/keys/your-key1",
+						"Port":           "1234",
+						"TCPKeepAlive":   "yes",
+					},
+				},
+				{
+					Name: "server2",
+					Data: Define.HostConfigDataForJSON{
+						"Compression":    "yes",
+						"ControlPath":    "~/.ssh/server-2-%r@%h:%p",
+						"ControlPersist": "yes",
+						"ForwardAgent":   "yes",
+						"HostName":       "123.234.123.234",
+						"IdentityFile":   "~/.ssh/keys/your-key2",
+						"Port":           "1234",
+						"TCPKeepAlive":   "yes",
+						"User":           "ubuntu",
+					},
+				},
+			},
+		},
+		{
+			name:     "Empty input",
+			input:    "",
+			expected: nil,
+		},
+		{
+			name:     "Invalid JSON",
+			input:    `{"invalid": "json"}`,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := Fn.GetJSONData(tt.input)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("GetJSONData() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}

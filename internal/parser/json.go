@@ -21,3 +21,23 @@ func ConvertToJSON(input []Define.HostConfig) []byte {
 	}
 	return Fn.GetJSONBytes(hostConfigs)
 }
+
+func GroupJSONConfig(input string) []Define.HostConfig {
+	jsonConfig := Fn.GetJSONData(input)
+
+	var hostConfigs []Define.HostConfig
+
+	for _, hostConfig := range jsonConfig {
+		var config Define.HostConfig
+		config.Name = hostConfig.Name
+		config.Notes = hostConfig.Notes
+		config.Config = make(map[string]string)
+
+		for key, value := range hostConfig.Data {
+			config.Config[key] = value
+		}
+		hostConfigs = append(hostConfigs, config)
+	}
+
+	return hostConfigs
+}

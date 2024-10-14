@@ -18,9 +18,7 @@ func Process(fileType string, userInput string, args Cmd.Args) []byte {
 	case "YAML":
 		hostConfigs = Parser.GroupYAMLConfig(userInput)
 	case "JSON":
-		fmt.Println("JSON")
-		fmt.Println("Implemented later")
-		os.Exit(0)
+		hostConfigs = Parser.GroupJSONConfig(userInput)
 	case "TEXT":
 		hostConfigs = Parser.GroupSSHConfig(userInput)
 	}

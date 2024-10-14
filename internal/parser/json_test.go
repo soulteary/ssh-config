@@ -97,3 +97,55 @@ func TestConvertToJSON(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupJSONConfig(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected []Define.HostConfig
+	}{
+		{
+			name: "Normal case",
+			input: `[
+                {"Name": "host1", "Notes": "note1", "Data": {"key1": "value1", "key2": "value2"}},
+                {"Name": "host2", "Notes": "note2", "Data": {"key3": "value3", "key4": "value4"}}
+            ]`,
+			expected: []Define.HostConfig{
+				{
+					Name:   "host1",
+					Notes:  "note1",
+					Config: map[string]string{"key1": "value1", "key2": "value2"},
+				},
+				{
+					Name:   "host2",
+					Notes:  "note2",
+					Config: map[string]string{"key3": "value3", "key4": "value4"},
+				},
+			},
+		},
+		{
+			name:     "Empty input",
+			input:    "[]",
+			expected: []Define.HostConfig{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := Parser.GroupJSONConfig(tc.input)
+
+			for i, hostConfig := range result {
+				if hostConfig.Name != tc.expected[i].Name {
+					t.Errorf("GroupJSONConfig(%s) = %v, want %v", tc.input, result, tc.expected)
+				}
+				if hostConfig.Notes != tc.expected[i].Notes {
+					t.Errorf("GroupJSONConfig(%s) = %v, want %v", tc.input, result, tc.expected)
+				}
+				if !reflect.DeepEqual(hostConfig.Config, tc.expected[i].Config) {
+					t.Errorf("GroupJSONConfig(%s) = %v, want %v", tc.input, result, tc.expected)
+				}
+			}
+
+		})
+	}
+}

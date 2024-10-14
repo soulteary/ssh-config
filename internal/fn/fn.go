@@ -70,6 +70,15 @@ func GetJSONBytes(data any) []byte {
 	return jsonData
 }
 
+func GetJSONData(input string) (jsonConfig []Define.HostConfigForJSON) {
+	err := json.Unmarshal([]byte(input), &jsonConfig)
+	if err != nil {
+		fmt.Println("Error unmarshalling JSON:", err)
+		return jsonConfig
+	}
+	return jsonConfig
+}
+
 func DetectStringType(input string) string {
 	trimmedInput := strings.TrimSpace(input)
 
