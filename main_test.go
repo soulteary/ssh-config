@@ -1,4 +1,4 @@
-package main_test
+package main
 
 import (
 	"bytes"
@@ -8,7 +8,6 @@ import (
 	"path"
 	"testing"
 
-	Main "github.com/soulteary/ssh-config"
 	Cmd "github.com/soulteary/ssh-config/cmd"
 )
 
@@ -36,13 +35,13 @@ func TestRun(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Cmd.Args
-		deps    Main.Dependencies
+		deps    Dependencies
 		wantErr bool
 	}{
 		{
 			name: "Invalid convert arguments",
 			args: Cmd.Args{ToYAML: true, ToJSON: true, ToSSH: true},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				CheckUseStdin: func() bool { return false },
 			},
@@ -51,7 +50,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "Pipe mode",
 			args: Cmd.Args{ToSSH: true},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:             func() (os.FileInfo, error) { return nil, nil },
 				Println:               func(...interface{}) (int, error) { return 0, nil },
 				GetUserInputFromStdin: func() string { return string(yamlContent) },
@@ -63,7 +62,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "Invalid IO arguments",
 			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				CheckUseStdin: func() bool { return false },
@@ -73,7 +72,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "File read error",
 			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				GetContent:    func(string) ([]byte, error) { return nil, errors.New("read error") },
@@ -84,7 +83,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "File save error",
 			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
@@ -97,7 +96,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "Successful file conversion",
 			args: Cmd.Args{ToYAML: true, Src: "testdata/main-test.cfg", Dest: "test.yaml"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
@@ -110,7 +109,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "File read error with print",
 			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				GetContent:    func(string) ([]byte, error) { return nil, errors.New("read error") },
@@ -121,7 +120,7 @@ func TestRun(t *testing.T) {
 		{
 			name: "File save error with print",
 			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
-			deps: Main.Dependencies{
+			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
 				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
@@ -135,7 +134,7 @@ func TestRun(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Main.Run(tt.args, tt.deps)
+			err := Run(tt.args, tt.deps)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Run() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -181,7 +180,7 @@ func TestMainWithDependencies(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			Main.MainWithDependencies(exitFunc)
+			MainWithDependencies(exitFunc)
 			Cmd.ResetFlags()
 
 			w.Close()
@@ -232,7 +231,7 @@ func TestMain(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	Main.Main()
+	main()
 
 	w.Close()
 	os.Stdout = oldStdout

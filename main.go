@@ -82,6 +82,6 @@ func MainWithDependencies(exit func(int)) {
 	}
 }
 
-func Main() {
+func main() {
 	MainWithDependencies(os.Exit)
 }
