@@ -1,0 +1,180 @@
+version: 2
+
+env:
+  - GO111MODULE=on
+
+before:
+  hooks:
+    - go mod tidy
+
+gomod:
+  proxy: true
+
+report_sizes: true
+
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64
+      - ppc64
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{ .CommitDate }} -X main.builtBy=goreleaser -X main.treeState={{ .IsGitDirty }}
+
+universal_binaries:
+  - replace: false
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^test:"
+      - "^test\\("
+      - "merge conflict"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: Dependency updates
+      regexp: '^.*?(.+)\(deps\)!?:.+$'
+      order: 300
+    - title: "New Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Documentation updates"
+      regexp: ^.*?docs?(\(.+\))??!?:.+$
+      order: 400
+    - title: "Build process updates"
+      regexp: ^.*?(build|ci)(\(.+\))??!?:.+$
+      order: 400
+    - title: Other work
+      order: 9999
+
+dockers:
+  - image_templates:
+      - "soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
+      - "--label=io.artifacthub.package.logo-url=https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
+      - '--label=io.artifacthub.package.maintainers=[{"name":"soulteary","email":"soulteary@gmail.com"}]'
+      - "--label=io.artifacthub.package.license=Apache-v2"
+      - "--label=org.opencontainers.image.description=100% Coverage, Use more expressive YAML / JSON to manage your Config files."
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+  - image_templates:
+      - "soulteary/ssh-config:v{{ .Version }}-arm64"
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
+      - "--label=io.artifacthub.package.logo-url=https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
+      - '--label=io.artifacthub.package.maintainers=[{"name":"soulteary","email":"soulteary@gmail.com"}]'
+      - "--label=io.artifacthub.package.license=Apache-v2"
+      - "--label=org.opencontainers.image.description=100% Coverage, Use more expressive YAML / JSON to manage your Config files."
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+    goarch: arm64
+
+docker_manifests:
+  - name_template: "soulteary/ssh-config:v{{ .Version }}"
+    image_templates:
+      - "soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "soulteary/ssh-config:v{{ .Version }}-arm64"
+  - name_template: "ghcr.io/soulteary/ssh-config:v{{ .Version }}"
+    image_templates:
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
+  - name_template: "{{ if not .IsNightly }}soulteary/ssh-config:latest{{ end }}"
+    image_templates:
+      - "soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "soulteary/ssh-config:v{{ .Version }}-arm64"
+  - name_template: "{{ if not .IsNightly }}ghcr.io/soulteary/ssh-config:latest{{ end }}"
+    image_templates:
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
+  - name_template: "{{ if .IsNightly }}soulteary/ssh-config:nightly{{ end }}"
+    image_templates:
+      - "soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "soulteary/ssh-config:v{{ .Version }}-arm64"
+  - name_template: "{{ if .IsNightly }}ghcr.io/soulteary/ssh-config:nightly{{ end }}"
+    image_templates:
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
+      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
+
+archives:
+  - name_template: >-
+      {{- .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end -}}
+    format_overrides:
+      - goos: windows
+        format: zip
+    builds_info:
+      group: root
+      owner: root
+      mtime: "{{ .CommitDate }}"
+    files:
+      - src: README.md
+        info:
+          owner: root
+          group: root
+          mtime: "{{ .CommitDate }}"
+      - src: LICENSE
+        info:
+          owner: root
+          group: root
+          mtime: "{{ .CommitDate }}"
+
+milestones:
+  - close: true
+
+release:
+  name_template: "v{{ .Version }}"
+  footer: |
+    **Full Changelog**: https://github.com/soulteary/ssh-config/compare/{{ .PreviousTag }}...{{ if .IsNightly }}nightly{{ else }}{{ .Tag }}{{ end }}
