@@ -36,6 +36,29 @@ ssh-config [options] <input_file> <output_file>
 cat input_file | ssh-config -to-yaml > output_file
 ```
 
+### Docker
+
+下载镜像：
+
+```bash
+docker pull soulteary/ssh-config:v1.0.1
+# 或
+docker pull ghcr.io/soulteary/ssh-config:v1.0.1
+```
+
+直接在 Docker 中转换文件，并保存为新文件：
+
+```bash
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.0.1 ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+```
+
+如果你想使用完整的命令，需要先进入 Docker 的交互式环境，然后执行命令：
+
+```bash
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.0.1 bash
+cat /ssh/test.yaml | ssh-config -to-yaml
+```
+
 ### 选项
 
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。

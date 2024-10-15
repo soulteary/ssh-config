@@ -36,6 +36,29 @@ Or, use Linux pipes to manipulate files:
 cat input_file | ssh-config -to-yaml > output_file
 ```
 
+### Docker
+
+Download docker image:
+
+```bash
+docker pull soulteary/ssh-config:v1.0.1
+# or
+docker pull ghcr.io/soulteary/ssh-config:v1.0.1
+```
+
+Convert file (test.yaml) in the current directory to YAML (abc.yaml):
+
+```bash
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.0.1 ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+```
+
+If you want to use the complete command, you need to enter the Docker interactive environment first, and then execute the command:
+
+```bash
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.0.1 bash
+cat /ssh/test.yaml | ssh-config -to-yaml
+```
+
 ### Options
 
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
