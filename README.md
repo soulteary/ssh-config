@@ -4,6 +4,8 @@
 
 **[中文文档](./README_CN.md)**
 
+<img src=".github/github-repo-card.png" >
+
 SSH Config Tool is a command-line utility for managing SSH configuration files. It allows you to manage your SSH config files using more expressive YAML/JSON formats.
 
 ## Features
