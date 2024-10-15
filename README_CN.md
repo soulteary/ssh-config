@@ -18,9 +18,7 @@ SSH Config Tool 是一个用于管理 SSH 配置文件的命令行工具。它�
 
 ## 安装
 
-```bash
-go get github.com/soulteary/ssh-config
-```
+使用 Docker 或者从 [GitHub 发布页面](https://github.com/soulteary/ssh-config/releases)下载合适你的系统、CPU 架构的二进制文件即可。
 
 ## 使用方法
 
