@@ -131,6 +131,12 @@ func TestCheckIOArgvValid(t *testing.T) {
 			wantResult: false,
 			wantDesc:   "Error: Parent directory of destination '" + filepath.Join(tempDir, "nonexistent", "file.txt") + "' does not exist",
 		},
+		{
+			name:       "Valid src directory",
+			args:       Cmd.Args{Src: testFile},
+			wantResult: true,
+			wantDesc:   "",
+		},
 	}
 
 	for _, tt := range tests {

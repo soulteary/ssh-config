@@ -119,7 +119,7 @@ func TestRun(t *testing.T) {
 		},
 		{
 			name: "File save error with print",
-			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
+			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg", Dest: "can-not-save.json"},
 			deps: Dependencies{
 				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
 				Println:       func(...interface{}) (int, error) { return 0, nil },
@@ -129,6 +129,19 @@ func TestRun(t *testing.T) {
 				CheckUseStdin: func() bool { return false },
 			},
 			wantErr: true,
+		},
+		{
+			name: "Successful file conversion",
+			args: Cmd.Args{ToJSON: true, Src: "testdata/main-test.cfg"},
+			deps: Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return sshContent, nil },
+				SaveFile:      func(string, []byte) error { return nil },
+				Process:       func(string, string, Cmd.Args) []byte { return jsonContent },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: false,
 		},
 	}
 

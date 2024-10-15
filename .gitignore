@@ -3,3 +3,4 @@ coverage.*
 test.yaml
 test.json
 test.cfg
+ssh-config

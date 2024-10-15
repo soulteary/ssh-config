@@ -52,6 +52,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	if pipeMode {
 		deps.Println(string(result))
 	} else {
+		if args.Dest == "" {
+			deps.Println(string(result))
+			return nil
+		}
+
 		err := deps.SaveFile(args.Dest, result)
 		if err != nil {
 			deps.Println("Error saving file:", err)

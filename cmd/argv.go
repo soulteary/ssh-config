@@ -104,6 +104,11 @@ func CheckIOArgvValid(args Args) (result bool, desc string) {
 		return false, fmt.Sprintf("Error: Source path '%s' does not exist", args.Src)
 	}
 
+	// allow empty dest
+	if args.Dest == "" {
+		return true, ""
+	}
+
 	// Check if dist exists
 	_, err = os.Stat(args.Dest)
 	if os.IsNotExist(err) {
