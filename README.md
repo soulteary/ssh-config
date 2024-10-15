@@ -115,3 +115,14 @@ Issues and pull requests are welcome.
 ## License
 
 This project is licensed under the Apache License. See the [LICENSE](./LICENSE) file for details.
+
+# Guide
+
+- [SSH Config Tool: Use structured data to manage SSH configuration](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html)
+
+# Credits
+
+- Useful OpenSSH software
+  - https://man.openbsd.org/ssh_config
+- Inspiration for the definition of configuration files
+  - https://github.com/bencromwell/sshush

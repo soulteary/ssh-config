@@ -115,3 +115,14 @@ go test -v ./... -covermode=atomic -coverprofile=coverage.out && go tool cover -
 ## 许可证
 
 本项目采用 Apache 许可证。详见 [LICENSE](./LICENSE) 文件。
+
+# 使用教程
+
+- [使用结构化数据管理 SSH 配置：SSH Config Tool](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html)
+
+# 感谢
+
+- 好用的 OpenSSH 软件包
+  - https://man.openbsd.org/ssh_config
+- 颇受启发的配置文件
+  - https://github.com/bencromwell/sshush
