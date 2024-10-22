@@ -36,9 +36,16 @@ func GroupSSHConfigFromString(input string) map[string]SSHHostConfigGroup {
 				Config:   make(map[string]string),
 			}
 			currentComments = nil
+		} else if strings.HasPrefix(line, "Include ") {
+			// ignore include
 		} else {
 			parts := strings.SplitN(line, " ", 2)
 			if len(parts) == 2 {
+				if hostConfigs[currentHost].Config == nil {
+					config := hostConfigs[currentHost]
+					config.Config = make(map[string]string)
+					hostConfigs[currentHost] = config
+				}
 				key := strings.TrimSpace(parts[0])
 				value := strings.TrimSpace(parts[1])
 				hostConfigs[currentHost].Config[key] = value

@@ -12,7 +12,6 @@ import (
 )
 
 func TestGroupSSHConfigFromString(t *testing.T) {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		t.Errorf("GroupSSHConfigFromString() error = %v", err)
@@ -409,5 +408,39 @@ Host example2
 				}
 			}
 		})
+	}
+}
+
+func TestGroupSSHConfigFromString_NilConfig(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestGroupSSHConfigFromString_NilConfig() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/error-test-no-hosts.cfg"))
+	if err != nil {
+		t.Errorf("TestGroupSSHConfigFromString_NilConfig() error = %v", err)
+	}
+
+	actual := Parser.GroupSSHConfigFromString(string(buf))
+	if len(actual) != 1 {
+		t.Errorf("TestGroupSSHConfigFromString_NilConfig() = %v, want %v", len(actual), 0)
+	}
+}
+
+func TestGroupSSHConfigFromString_OnlyInclude(t *testing.T) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		t.Errorf("TestGroupSSHConfigFromString_OnlyInclude() error = %v", err)
+	}
+
+	buf, err := os.ReadFile(path.Join(pwd, "../../testdata/error-test-only-include.cfg"))
+	if err != nil {
+		t.Errorf("TestGroupSSHConfigFromString_OnlyInclude() error = %v", err)
+	}
+
+	actual := Parser.GroupSSHConfigFromString(string(buf))
+	if len(actual) != 0 {
+		t.Errorf("TestGroupSSHConfigFromString_OnlyInclude() = %v, want %v", len(actual), 0)
 	}
 }
