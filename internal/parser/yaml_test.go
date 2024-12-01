@@ -103,6 +103,28 @@ func TestConvertToYAML(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Both global and normal config",
+			input: []Define.HostConfig{
+				{
+					Name:   "host1",
+					Notes:  "note1",
+					Config: nil,
+				},
+			},
+			expected: Define.YAMLOutput{
+				Groups: map[string]Define.GroupConfig{
+					"Group host1": {
+						Common: make(map[string]string),
+						Hosts: map[string]Define.HostConfig{
+							"host1": {
+								Notes: "note1",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
