@@ -167,8 +167,8 @@ func TestMainWithDependencies(t *testing.T) {
 	}{
 		{
 			name:           "Successful execution",
-			args:           []string{"cmd", "--to-json", "-src", "testdata/main-test.cfg", "-dest", "test.json"},
-			expectedOutput: "File has been saved successfully\nFile path: test.json\n",
+			args:           []string{"cmd", "--to-yaml", "-src", "testdata/main-test.json", "-dest", "test.yaml"},
+			expectedOutput: "testdata/main-test.json\nFile has been saved successfully\nFile path: test.yaml\n",
 			expectedExit:   0,
 		},
 		{

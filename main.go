@@ -22,20 +22,6 @@ type Dependencies struct {
 }
 
 func Run(args Cmd.Args, deps Dependencies) error {
-	// default src to ~/.ssh
-	if args.Src == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return fmt.Errorf("Error: getting user home directory: %v", err)
-		}
-		args.Src = filepath.Join(homeDir, ".ssh")
-	}
-
-	// default to YAML
-	if !(args.ToYAML && args.ToJSON && args.ToSSH) {
-		args.ToYAML = true
-	}
-
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
 		deps.Println(notValidReason)
@@ -96,8 +82,23 @@ func MainWithDependencies(exit func(int)) {
 		CheckUseStdin:         func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
 	}
 	args := Cmd.ParseArgs()
+
+	// default src to ~/.ssh
+	if args.Src == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("Error: getting user home directory:", err)
+			exit(1)
+		}
+		args.Src = filepath.Join(homeDir, ".ssh")
+	}
+
+	// default to YAML
+	if !(args.ToYAML && args.ToJSON && args.ToSSH) {
+		args.ToYAML = true
+	}
+
 	if err := Run(args, deps); err != nil {
-		fmt.Println("Error:", err)
 		exit(1)
 	}
 }

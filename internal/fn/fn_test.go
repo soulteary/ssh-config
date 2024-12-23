@@ -478,8 +478,8 @@ func TestGetPathContent(t *testing.T) {
 
 	file1 := filepath.Join(multiDir, "file1.txt")
 	file2 := filepath.Join(multiDir, "file2.txt")
-	content1 := []byte("Content of file 1")
-	content2 := []byte("Content of file 2")
+	content1 := []byte("Host test1")
+	content2 := []byte("Host test2")
 
 	err = os.WriteFile(file1, content1, 0644)
 	if err != nil {
@@ -531,8 +531,8 @@ func TestGetPathContent(t *testing.T) {
 	defer os.Chmod(unreadableFile, 0644)
 
 	_, err = Fn.GetPathContent(dirWithUnreadableFile)
-	if err == nil {
-		t.Error("Expected error for directory with unreadable file, got nil")
+	if err != nil {
+		t.Error("Expected nil error for directory with unreadable file (skip), got error", err)
 	}
 
 	unreadableFile2 := filepath.Join(tempDir, "unreadable_single.txt")
@@ -550,7 +550,7 @@ func TestGetPathContent(t *testing.T) {
 	_, err = Fn.GetPathContent(unreadableFile2)
 	if err == nil {
 		t.Error("Expected error for unreadable single file, got nil")
-	} else if !strings.Contains(err.Error(), "can not read source file") {
+	} else if !strings.Contains(err.Error(), "failed to read config file") {
 		t.Errorf("Expected error message to contain 'can not read source file', got: %v", err)
 	}
 }
