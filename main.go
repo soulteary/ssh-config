@@ -19,6 +19,7 @@ type Dependencies struct {
 	GetUserInputFromStdin func() string
 	Process               func(string, string, Cmd.Args) []byte
 	CheckUseStdin         func() bool
+	UserHomeDir           func() (string, error)
 }
 
 func Run(args Cmd.Args, deps Dependencies) error {
@@ -70,7 +71,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	return nil
 }
 
-func MainWithDependencies(exit func(int)) {
+func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 	deps := Dependencies{
 		StdinStat:             os.Stdin.Stat,
 		Exit:                  os.Exit,
@@ -85,7 +86,7 @@ func MainWithDependencies(exit func(int)) {
 
 	// default src to ~/.ssh
 	if args.Src == "" {
-		homeDir, err := os.UserHomeDir()
+		homeDir, err := userHomeDir()
 		if err != nil {
 			fmt.Println("Error: getting user home directory:", err)
 			exit(1)
@@ -104,5 +105,5 @@ func MainWithDependencies(exit func(int)) {
 }
 
 func main() {
-	MainWithDependencies(os.Exit)
+	MainWithDependencies(os.Exit, os.UserHomeDir)
 }

@@ -106,7 +106,6 @@ func GetPathContent(src string) ([]byte, error) {
 
 	var content []byte
 	for filePath := range configFiles.Configs {
-		fmt.Println(filePath)
 		fileContent, err := os.ReadFile(filePath)
 		if err != nil {
 			fmt.Println("Error reading file:", err)

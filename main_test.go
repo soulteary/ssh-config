@@ -164,18 +164,30 @@ func TestMainWithDependencies(t *testing.T) {
 		args           []string
 		expectedOutput string
 		expectedExit   int
+		mockHomeDir    func() (string, error)
 	}{
 		{
 			name:           "Successful execution",
 			args:           []string{"cmd", "--to-yaml", "-src", "testdata/main-test.json", "-dest", "test.yaml"},
-			expectedOutput: "testdata/main-test.json\nFile has been saved successfully\nFile path: test.yaml\n",
+			expectedOutput: "File has been saved successfully\nFile path: test.yaml\n",
 			expectedExit:   0,
+			mockHomeDir:    os.UserHomeDir,
 		},
 		{
 			name:           "Error execution",
 			args:           []string{"cmd", "--to-json", "--to-yaml"}, // Invalid args
 			expectedOutput: "Please specify either -to-yaml or -to-ssh or -to-json\n",
 			expectedExit:   1,
+			mockHomeDir:    os.UserHomeDir,
+		},
+		{
+			name:           "Home directory error",
+			args:           []string{"cmd"}, // No src specified, will try to use home dir
+			expectedOutput: "Error: getting user home directory: mock home dir error\nError: Source path '.ssh' does not exist\n",
+			expectedExit:   1,
+			mockHomeDir: func() (string, error) {
+				return "", errors.New("mock home dir error")
+			},
 		},
 	}
 
@@ -184,7 +196,6 @@ func TestMainWithDependencies(t *testing.T) {
 			os.Args = tt.args
 
 			exitCode := 0
-
 			exitFunc := func(code int) {
 				exitCode = code
 			}
@@ -193,7 +204,7 @@ func TestMainWithDependencies(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			MainWithDependencies(exitFunc)
+			MainWithDependencies(exitFunc, tt.mockHomeDir)
 			Cmd.ResetFlags()
 
 			w.Close()
@@ -252,7 +263,7 @@ func TestMain(t *testing.T) {
 	io.Copy(&buf, r)
 	output := buf.String()
 
-	expectedOutput := "testdata/main-test.json\nFile has been saved successfully\nFile path: test.yaml\n"
+	expectedOutput := "File has been saved successfully\nFile path: test.yaml\n"
 	if output != expectedOutput {
 		t.Errorf("Output = %q, want %q", output, expectedOutput)
 	}

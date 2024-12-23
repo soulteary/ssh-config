@@ -33,7 +33,6 @@ type YAMLOutput struct {
 	Groups  map[string]GroupConfig `yaml:",inline"`
 }
 
-
 var ExcludePatterns = []string{
 	"known_hosts",
 	"authorized_keys",

@@ -67,15 +67,6 @@ func IsConfigFile(path string) bool {
 }
 
 func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
-	// default to ~/.ssh
-	if sshPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("can't get user home directory: %v", err)
-		}
-		sshPath = filepath.Join(homeDir, ".ssh")
-	}
-
 	config := &SSHConfig{
 		Configs: make(map[string]*ConfigFile),
 	}
