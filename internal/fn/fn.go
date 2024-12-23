@@ -107,11 +107,9 @@ func GetPathContent(src string) ([]byte, error) {
 	var content []byte
 	for filePath := range configFiles.Configs {
 		fileContent, err := os.ReadFile(filePath)
-		if err != nil {
-			fmt.Println("Error reading file:", err)
-			continue
+		if err == nil {
+			content = append(content, fileContent...)
 		}
-		content = append(content, fileContent...)
 	}
 	return content, nil
 }

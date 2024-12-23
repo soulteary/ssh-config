@@ -554,6 +554,29 @@ func TestGetPathContent(t *testing.T) {
 	} else if !strings.Contains(err.Error(), "failed to read config file") {
 		t.Errorf("Expected error message to contain 'can not read source file', got: %v", err)
 	}
+
+	dirWithCorruptFile := filepath.Join(tempDir, "dir_with_corrupt")
+	err = os.Mkdir(dirWithCorruptFile, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create dir_with_corrupt: %v", err)
+	}
+
+	normalFile := filepath.Join(dirWithCorruptFile, "normal.txt")
+	err = os.WriteFile(normalFile, []byte("Normal content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create normal file: %v", err)
+	}
+
+	corruptFile := filepath.Join(dirWithCorruptFile, "corrupt.txt")
+	err = os.Symlink("/nonexistent/file", corruptFile)
+	if err != nil {
+		t.Fatalf("Failed to create corrupt file: %v", err)
+	}
+
+	_, err = Fn.GetPathContent(dirWithCorruptFile)
+	if err != nil {
+		t.Error("Expected success with skipped corrupt file, got error:", err)
+	}
 }
 
 func TestSave(t *testing.T) {
