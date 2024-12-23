@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	Cmd "github.com/soulteary/ssh-config/cmd"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
@@ -21,6 +22,15 @@ type Dependencies struct {
 }
 
 func Run(args Cmd.Args, deps Dependencies) error {
+	// default src to ~/.ssh
+	if args.Src == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("Error: getting user home directory: %v", err)
+		}
+		args.Src = filepath.Join(homeDir, ".ssh")
+	}
+
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
 		deps.Println(notValidReason)
