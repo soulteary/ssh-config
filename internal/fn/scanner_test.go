@@ -1,9 +1,11 @@
 package fn_test
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/soulteary/ssh-config/internal/fn"
@@ -409,5 +411,35 @@ Nothing to see here`,
 				t.Errorf("isConfigFile() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestReadSingleConfig_ScannerError tests the scanner error handling
+func TestReadSingleConfig_ScannerError(t *testing.T) {
+	// 创建一个包含无效数据的文件
+	tmpfile, err := os.CreateTemp("", "test_config_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	// 写入一些正常数据和一个超长行来触发 scanner 错误
+	longLine := strings.Repeat("a", bufio.MaxScanTokenSize+1)
+	content := "Host testhost\n" + longLine
+
+	if _, err := tmpfile.WriteString(content); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+
+	if err := tmpfile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	// 测试 ReadSingleConfig
+	result := fn.ReadSingleConfig(tmpfile.Name())
+
+	// 验证当发生扫描错误时返回 nil
+	if result != nil {
+		t.Errorf("Expected nil result when scanner error occurs, got: %v", result)
 	}
 }

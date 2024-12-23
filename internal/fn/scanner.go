@@ -140,18 +140,16 @@ func ReadSingleConfig(path string) *ConfigFile {
 		}
 
 		parts := strings.Fields(line)
-		if len(parts) < 2 {
-			continue
-		}
+		if len(parts) == 2 {
+			key := strings.ToLower(parts[0])
+			value := strings.Join(parts[1:], " ")
 
-		key := strings.ToLower(parts[0])
-		value := strings.Join(parts[1:], " ")
-
-		if key == "host" {
-			currentHost = value
-			config.Hosts[currentHost] = make(map[string]string)
-		} else if currentHost != "" {
-			config.Hosts[currentHost][key] = value
+			if key == "host" {
+				currentHost = value
+				config.Hosts[currentHost] = make(map[string]string)
+			} else if currentHost != "" {
+				config.Hosts[currentHost][key] = value
+			}
 		}
 	}
 
