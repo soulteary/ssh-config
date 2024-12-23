@@ -39,27 +39,27 @@ cat input_file | ssh-config -to-yaml > output_file
 下载镜像
 
 ```bash
-docker pull soulteary/ssh-config:v1.1.2
+docker pull soulteary/ssh-config:v1.2.0
 # or
-docker pull ghcr.io/soulteary/ssh-config:v1.1.2
+docker pull ghcr.io/soulteary/ssh-config:v1.2.0
 ```
 
 将当前目录的配置文件转换并保存为新的文件：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.1.2 ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.2.0 ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 如果你只想看看转换结果：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.1.2 ssh-config -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.2.0 ssh-config -to-yaml -src /ssh/test.yaml
 ```
 
 如果你想使用 Linux 管道来操作文件，可以先进入 Docker 交互式命令行：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.1.2 bash
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v1.2.0 bash
 cat /ssh/test.yaml | ssh-config -to-yaml
 ```
 
