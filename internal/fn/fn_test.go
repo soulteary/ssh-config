@@ -532,8 +532,8 @@ func TestGetPathContent(t *testing.T) {
 	defer os.Chmod(unreadableFile, 0644)
 
 	_, err = Fn.GetPathContent(dirWithUnreadableFile)
-	if err != nil {
-		t.Error("Expected nil error for directory with unreadable file (skip), got error", err)
+	if err == nil {
+		t.Error("Expected error for no valid SSH config found in, got nil", err)
 	}
 
 	unreadableFile2 := filepath.Join(tempDir, "unreadable_single.txt")
@@ -551,8 +551,8 @@ func TestGetPathContent(t *testing.T) {
 	_, err = Fn.GetPathContent(unreadableFile2)
 	if err == nil {
 		t.Error("Expected error for unreadable single file, got nil")
-	} else if !strings.Contains(err.Error(), "failed to read config file") {
-		t.Errorf("Expected error message to contain 'can not read source file', got: %v", err)
+	} else if !strings.Contains(err.Error(), "no valid SSH config found in") {
+		t.Errorf("Expected error message to contain 'no valid SSH config found in', got: %v", err)
 	}
 
 	dirWithCorruptFile := filepath.Join(tempDir, "dir_with_corrupt")
@@ -574,8 +574,8 @@ func TestGetPathContent(t *testing.T) {
 	}
 
 	_, err = Fn.GetPathContent(dirWithCorruptFile)
-	if err != nil {
-		t.Error("Expected success with skipped corrupt file, got error:", err)
+	if err == nil {
+		t.Fatalf("Expected error for directory with corrupt file, got nil")
 	}
 }
 

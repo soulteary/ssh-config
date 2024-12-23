@@ -103,6 +103,9 @@ func GetPathContent(src string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(configFiles.Configs) == 0 {
+		return nil, fmt.Errorf("no valid SSH config found in %s", src)
+	}
 
 	var content []byte
 	for filePath := range configFiles.Configs {

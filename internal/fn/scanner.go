@@ -77,11 +77,10 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	}
 
 	if !info.IsDir() {
-		configFile, err := ReadSingleConfig(sshPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read config file: %v", err)
+		configFile := ReadSingleConfig(sshPath)
+		if configFile != nil {
+			config.Configs[sshPath] = configFile
 		}
-		config.Configs[sshPath] = configFile
 		return config, nil
 	}
 
@@ -102,13 +101,10 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			return nil
 		}
 
-		configFile, err := ReadSingleConfig(path)
-		if err != nil {
-			fmt.Printf("warning: failed to read config file %s: %v\n", path, err)
-			return nil
+		configFile := ReadSingleConfig(path)
+		if configFile != nil {
+			config.Configs[path] = configFile
 		}
-
-		config.Configs[path] = configFile
 		return nil
 	})
 
@@ -119,10 +115,10 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	return config, nil
 }
 
-func ReadSingleConfig(path string) (*ConfigFile, error) {
+func ReadSingleConfig(path string) *ConfigFile {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	defer file.Close()
 
@@ -160,11 +156,11 @@ func ReadSingleConfig(path string) (*ConfigFile, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil
 	}
 
 	config.Content = content
-	return config, nil
+	return config
 }
 
 func (c *SSHConfig) GetHostConfig(host string) map[string]map[string]string {
