@@ -99,33 +99,19 @@ func DetectStringType(input string) string {
 }
 
 func GetPathContent(src string) ([]byte, error) {
-	srcInfo, err := os.Stat(src)
+	configFiles, err := ReadSSHConfigs(src)
 	if err != nil {
-		return nil, fmt.Errorf("can not get source info: %v", err)
+		return nil, err
+	}
+	if len(configFiles.Configs) == 0 {
+		return nil, fmt.Errorf("no valid SSH config found in %s", src)
 	}
 
 	var content []byte
-
-	if srcInfo.IsDir() {
-		files, err := os.ReadDir(src)
-		if err != nil {
-			return nil, fmt.Errorf("can not read source directory: %v", err)
-		}
-
-		for _, file := range files {
-			if !file.IsDir() {
-				filePath := filepath.Join(src, file.Name())
-				fileContent, err := os.ReadFile(filePath)
-				if err != nil {
-					return nil, fmt.Errorf("can not read file %s: %v", filePath, err)
-				}
-				content = append(content, fileContent...)
-			}
-		}
-	} else {
-		content, err = os.ReadFile(src)
-		if err != nil {
-			return nil, fmt.Errorf("can not read source file: %v", err)
+	for filePath := range configFiles.Configs {
+		fileContent, err := os.ReadFile(filePath)
+		if err == nil {
+			content = append(content, fileContent...)
 		}
 	}
 	return content, nil

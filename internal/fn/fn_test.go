@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	Define "github.com/soulteary/ssh-config/internal/define"
+	"github.com/soulteary/ssh-config/internal/fn"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
 )
 
@@ -478,8 +479,8 @@ func TestGetPathContent(t *testing.T) {
 
 	file1 := filepath.Join(multiDir, "file1.txt")
 	file2 := filepath.Join(multiDir, "file2.txt")
-	content1 := []byte("Content of file 1")
-	content2 := []byte("Content of file 2")
+	content1 := []byte("Host test1")
+	content2 := []byte("Host test2")
 
 	err = os.WriteFile(file1, content1, 0644)
 	if err != nil {
@@ -532,7 +533,7 @@ func TestGetPathContent(t *testing.T) {
 
 	_, err = Fn.GetPathContent(dirWithUnreadableFile)
 	if err == nil {
-		t.Error("Expected error for directory with unreadable file, got nil")
+		t.Error("Expected error for no valid SSH config found in, got nil", err)
 	}
 
 	unreadableFile2 := filepath.Join(tempDir, "unreadable_single.txt")
@@ -550,8 +551,31 @@ func TestGetPathContent(t *testing.T) {
 	_, err = Fn.GetPathContent(unreadableFile2)
 	if err == nil {
 		t.Error("Expected error for unreadable single file, got nil")
-	} else if !strings.Contains(err.Error(), "can not read source file") {
-		t.Errorf("Expected error message to contain 'can not read source file', got: %v", err)
+	} else if !strings.Contains(err.Error(), "no valid SSH config found in") {
+		t.Errorf("Expected error message to contain 'no valid SSH config found in', got: %v", err)
+	}
+
+	dirWithCorruptFile := filepath.Join(tempDir, "dir_with_corrupt")
+	err = os.Mkdir(dirWithCorruptFile, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create dir_with_corrupt: %v", err)
+	}
+
+	normalFile := filepath.Join(dirWithCorruptFile, "normal.txt")
+	err = os.WriteFile(normalFile, []byte("Normal content"), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create normal file: %v", err)
+	}
+
+	corruptFile := filepath.Join(dirWithCorruptFile, "corrupt.txt")
+	err = os.Symlink("/nonexistent/file", corruptFile)
+	if err != nil {
+		t.Fatalf("Failed to create corrupt file: %v", err)
+	}
+
+	_, err = Fn.GetPathContent(dirWithCorruptFile)
+	if err == nil {
+		t.Fatalf("Expected error for directory with corrupt file, got nil")
 	}
 }
 
@@ -751,4 +775,89 @@ func TestTidyLastEmptyLines(t *testing.T) {
 			}
 		})
 	}
+}
+
+//
+
+// SSHConfig 模拟原始结构
+type SSHConfig struct {
+	Configs map[string]interface{}
+}
+
+// 创建测试用的配置文件目录
+func createTestConfigDir(t *testing.T) (string, error) {
+	tmpDir := t.TempDir()
+
+	// 创建测试文件1
+	test1Path := filepath.Join(tmpDir, "test1.txt")
+	err := os.WriteFile(test1Path, []byte("Host abc"), 0644)
+	if err != nil {
+		return "", err
+	}
+
+	// 创建测试文件2
+	test2Path := filepath.Join(tmpDir, "test2.txt")
+	err = os.WriteFile(test2Path, []byte("Host def"), 0644)
+	if err != nil {
+		return "", err
+	}
+
+	// 创建一个无权限的文件
+	noPermFile := filepath.Join(tmpDir, "no_perm.txt")
+	err = os.WriteFile(noPermFile, []byte("no permission"), 0644)
+	if err != nil {
+		return "", err
+	}
+	err = os.Chmod(noPermFile, 0000) // 移除所有权限
+	if err != nil {
+		return "", err
+	}
+
+	return tmpDir, nil
+}
+
+func TestGetPathContent2(t *testing.T) {
+	// 测试场景1: 成功读取文件
+	t.Run("Success case", func(t *testing.T) {
+		tmpDir, err := createTestConfigDir(t)
+		if err != nil {
+			t.Fatalf("Failed to create test directory: %v", err)
+		}
+
+		content, err := fn.GetPathContent(tmpDir)
+
+		// 验证无权限文件的内容没有被包含
+		if strings.Contains(string(content), "no permission") {
+			t.Error("Content should not contain 'no permission' as the file is not readable")
+		}
+	})
+
+	// 测试场景2: 配置目录不存在
+	t.Run("Non-existent directory", func(t *testing.T) {
+		content, err := fn.GetPathContent("non_existent_dir")
+		if err == nil {
+			t.Error("Expected an error, got nil")
+		}
+		if content != nil {
+			t.Error("Expected nil content")
+		}
+	})
+
+	// 测试场景3: 文件读取失败（权限问题）
+	t.Run("File read error due to permissions", func(t *testing.T) {
+		tmpDir, err := createTestConfigDir(t)
+		if err != nil {
+			t.Fatalf("Failed to create test directory: %v", err)
+		}
+
+		content, err := fn.GetPathContent(tmpDir)
+		if err != nil {
+			t.Errorf("Expected no error, got %v", err)
+		}
+
+		// 验证无权限文件的内容没有被包含
+		if strings.Contains(string(content), "no permission") {
+			t.Error("Content should not contain 'no permission' as the file is not readable")
+		}
+	})
 }
