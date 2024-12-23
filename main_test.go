@@ -238,7 +238,7 @@ func TestMain(t *testing.T) {
 		exitCode = code
 	}
 
-	os.Args = []string{"cmd", "--to-json", "-src", "testdata/main-test.cfg", "-dest", "test.json"}
+	os.Args = []string{"cmd", "--to-yaml", "-src", "testdata/main-test.json", "-dest", "test.yaml"}
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
@@ -252,7 +252,7 @@ func TestMain(t *testing.T) {
 	io.Copy(&buf, r)
 	output := buf.String()
 
-	expectedOutput := "File has been saved successfully\nFile path: test.json\n"
+	expectedOutput := "testdata/main-test.json\nFile has been saved successfully\nFile path: test.yaml\n"
 	if output != expectedOutput {
 		t.Errorf("Output = %q, want %q", output, expectedOutput)
 	}
@@ -261,5 +261,5 @@ func TestMain(t *testing.T) {
 		t.Errorf("os.Exit was called with code %d", exitCode)
 	}
 
-	os.Remove("test.json")
+	os.Remove("test.yaml")
 }

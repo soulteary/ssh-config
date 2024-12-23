@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/soulteary/ssh-config/internal/define"
 )
 
 type ConfigFile struct {
@@ -18,20 +20,10 @@ type SSHConfig struct {
 	Configs map[string]*ConfigFile // key: 配置文件路径
 }
 
-var excludePatterns = []string{
-	"known_hosts",
-	"authorized_keys",
-	"*.pub",
-	"id_*",
-	"*.key",
-	"*.pem",
-	"*.ppk",
-}
-
-func isExcluded(filename string) bool {
+func IsExcluded(filename string) bool {
 	filename = strings.ToLower(filename)
 
-	for _, pattern := range excludePatterns {
+	for _, pattern := range define.ExcludePatterns {
 		if matched, _ := filepath.Match(pattern, filename); matched {
 			return true
 		}
@@ -40,7 +32,7 @@ func isExcluded(filename string) bool {
 	return false
 }
 
-func isConfigFile(path string) bool {
+func IsConfigFile(path string) bool {
 	// read file first few lines to determine if it's SSH config file format
 	file, err := os.Open(path)
 	if err != nil {
@@ -94,7 +86,7 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	}
 
 	if !info.IsDir() {
-		configFile, err := readSingleConfig(sshPath)
+		configFile, err := ReadSingleConfig(sshPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read config file: %v", err)
 		}
@@ -111,15 +103,15 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			return nil
 		}
 
-		if isExcluded(info.Name()) {
+		if IsExcluded(info.Name()) {
 			return nil
 		}
 
-		if !isConfigFile(path) {
+		if !IsConfigFile(path) {
 			return nil
 		}
 
-		configFile, err := readSingleConfig(path)
+		configFile, err := ReadSingleConfig(path)
 		if err != nil {
 			fmt.Printf("warning: failed to read config file %s: %v\n", path, err)
 			return nil
@@ -136,7 +128,7 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	return config, nil
 }
 
-func readSingleConfig(path string) (*ConfigFile, error) {
+func ReadSingleConfig(path string) (*ConfigFile, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, err

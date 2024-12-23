@@ -32,3 +32,14 @@ type YAMLOutput struct {
 	Default map[string]string      `yaml:"default,omitempty"`
 	Groups  map[string]GroupConfig `yaml:",inline"`
 }
+
+
+var ExcludePatterns = []string{
+	"known_hosts",
+	"authorized_keys",
+	"*.pub",
+	"id_*",
+	"*.key",
+	"*.pem",
+	"*.ppk",
+}
