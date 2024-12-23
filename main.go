@@ -31,6 +31,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		args.Src = filepath.Join(homeDir, ".ssh")
 	}
 
+	// default to YAML
+	if !(args.ToYAML && args.ToJSON && args.ToSSH) {
+		args.ToYAML = true
+	}
+
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
 		deps.Println(notValidReason)
