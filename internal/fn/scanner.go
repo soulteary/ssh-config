@@ -88,7 +88,21 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 		Configs: make(map[string]*ConfigFile),
 	}
 
-	err := filepath.Walk(sshPath, func(path string, info os.FileInfo, err error) error {
+	info, err := os.Stat(sshPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get path object info: %v", err)
+	}
+
+	if !info.IsDir() {
+		configFile, err := readSingleConfig(sshPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read config file: %v", err)
+		}
+		config.Configs[sshPath] = configFile
+		return config, nil
+	}
+
+	err = filepath.Walk(sshPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
