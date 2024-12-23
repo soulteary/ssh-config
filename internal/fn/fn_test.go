@@ -496,7 +496,8 @@ func TestGetPathContent(t *testing.T) {
 		t.Errorf("GetPathContent failed for directory: %v", err)
 	}
 	expectedContent := append(content1, content2...)
-	if !reflect.DeepEqual(content, expectedContent) {
+	expectedContent2 := append(content1, content2...)
+	if !reflect.DeepEqual(content, expectedContent) || !reflect.DeepEqual(content, expectedContent2) {
 		t.Errorf("Expected %s, got %s", expectedContent, content)
 	}
 
