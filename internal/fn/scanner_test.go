@@ -2,6 +2,8 @@ package fn_test
 
 import (
 	"bufio"
+	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -441,5 +443,81 @@ func TestReadSingleConfig_ScannerError(t *testing.T) {
 	// 验证当发生扫描错误时返回 nil
 	if result != nil {
 		t.Errorf("Expected nil result when scanner error occurs, got: %v", result)
+	}
+}
+
+func TestPrintConfigs(t *testing.T) {
+	// 准备测试数据
+	sshConfig := &fn.SSHConfig{
+		Configs: map[string]*fn.ConfigFile{
+			"/home/user/.ssh/config": {
+				Path: "/home/user/.ssh/config",
+				Content: []string{
+					"Host github.com",
+					"  HostName github.com",
+					"  User git",
+					"  IdentityFile ~/.ssh/github_rsa",
+				},
+				Hosts: map[string]map[string]string{
+					"github.com": {
+						"HostName":     "github.com",
+						"User":         "git",
+						"IdentityFile": "~/.ssh/github_rsa",
+					},
+				},
+			},
+			"/home/user/.ssh/config.d/work": {
+				Path: "/home/user/.ssh/config.d/work",
+				Content: []string{
+					"Host work-server",
+					"  HostName 192.168.1.100",
+					"  User worker",
+					"  Port 2222",
+				},
+				Hosts: map[string]map[string]string{
+					"work-server": {
+						"HostName": "192.168.1.100",
+						"User":     "worker",
+						"Port":     "2222",
+					},
+				},
+			},
+		},
+	}
+
+	// 捕获标准输出
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// 运行要测试的函数
+	sshConfig.PrintConfigs()
+
+	// 恢复标准输出并获取输出内容
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	output := buf.String()
+
+	// 验证输出内容
+	expectedOutputs := []string{
+		"=== 配置文件: /home/user/.ssh/config ===",
+		"Host github.com:",
+		"  HostName = github.com",
+		"  User = git",
+		"  IdentityFile = ~/.ssh/github_rsa",
+		"=== 配置文件: /home/user/.ssh/config.d/work ===",
+		"Host work-server:",
+		"  HostName = 192.168.1.100",
+		"  User = worker",
+		"  Port = 2222",
+	}
+
+	for _, expected := range expectedOutputs {
+		if !strings.Contains(output, expected) {
+			t.Errorf("Expected output to contain %q, but it didn't.\nActual output:\n%s", expected, output)
+		}
 	}
 }
