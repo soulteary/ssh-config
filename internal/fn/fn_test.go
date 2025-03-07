@@ -28,7 +28,6 @@ import (
 	"testing"
 
 	Define "github.com/soulteary/ssh-config/internal/define"
-	"github.com/soulteary/ssh-config/internal/fn"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
 )
 
@@ -841,8 +840,10 @@ func TestGetPathContent2(t *testing.T) {
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 
-		content, err := fn.GetPathContent(tmpDir)
-
+		content, err := Fn.GetPathContent(tmpDir)
+		if err != nil {
+			t.Errorf("Expected no error, got %v", err)
+		}
 		// 验证无权限文件的内容没有被包含
 		if strings.Contains(string(content), "no permission") {
 			t.Error("Content should not contain 'no permission' as the file is not readable")
@@ -851,7 +852,7 @@ func TestGetPathContent2(t *testing.T) {
 
 	// 测试场景2: 配置目录不存在
 	t.Run("Non-existent directory", func(t *testing.T) {
-		content, err := fn.GetPathContent("non_existent_dir")
+		content, err := Fn.GetPathContent("non_existent_dir")
 		if err == nil {
 			t.Error("Expected an error, got nil")
 		}
@@ -867,7 +868,7 @@ func TestGetPathContent2(t *testing.T) {
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 
-		content, err := fn.GetPathContent(tmpDir)
+		content, err := Fn.GetPathContent(tmpDir)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}

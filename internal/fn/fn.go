@@ -25,7 +25,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/soulteary/ssh-config/internal/define"
 	Define "github.com/soulteary/ssh-config/internal/define"
 	"gopkg.in/yaml.v2"
 )
@@ -102,12 +101,12 @@ func DetectStringType(input string) string {
 		return "TEXT"
 	}
 
-	var js []define.HostConfigForJSON
+	var js []Define.HostConfigForJSON
 	if json.Unmarshal([]byte(trimmedInput), &js) == nil {
 		return "JSON"
 	}
 
-	var y define.YAMLOutput
+	var y Define.YAMLOutput
 	if yaml.Unmarshal([]byte(trimmedInput), &y) == nil {
 		return "YAML"
 	}
