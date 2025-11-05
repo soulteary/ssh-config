@@ -190,6 +190,13 @@ func TestMainWithDependencies(t *testing.T) {
 			mockHomeDir:    os.UserHomeDir,
 		},
 		{
+			name:           "Successful execution to ssh",
+			args:           []string{"cmd", "--to-ssh", "-src", "testdata/main-test.yaml", "-dest", "test.cfg"},
+			expectedOutput: "File has been saved successfully\nFile path: test.cfg\n",
+			expectedExit:   0,
+			mockHomeDir:    os.UserHomeDir,
+		},
+		{
 			name:           "Error execution",
 			args:           []string{"cmd", "--to-json", "--to-yaml"}, // Invalid args
 			expectedOutput: "Please specify either -to-yaml or -to-ssh or -to-json\n",
@@ -241,7 +248,11 @@ func TestMainWithDependencies(t *testing.T) {
 			}
 
 			if tt.expectedExit == 0 {
-				os.Remove("output.json")
+				for i := 0; i < len(tt.args)-1; i++ {
+					if tt.args[i] == "-dest" || tt.args[i] == "--dest" {
+						os.Remove(tt.args[i+1])
+					}
+				}
 			}
 		})
 	}

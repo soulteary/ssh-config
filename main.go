@@ -110,8 +110,8 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		args.Src = filepath.Join(homeDir, ".ssh")
 	}
 
-	// default to YAML
-	if !(args.ToYAML && args.ToJSON && args.ToSSH) {
+	// default to YAML when no conversion flag is provided
+	if !(args.ToYAML || args.ToJSON || args.ToSSH) {
 		args.ToYAML = true
 	}
 
