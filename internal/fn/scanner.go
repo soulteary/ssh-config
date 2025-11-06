@@ -184,7 +184,8 @@ func ReadSingleConfig(path string) *ConfigFile {
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
+	scanErr := scanner.Err()
+	if scanErr != nil {
 		return nil
 	}
 

@@ -19,12 +19,14 @@ package fn_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/soulteary/ssh-config/internal/fn"
 )
@@ -247,6 +249,104 @@ func TestReadSSHConfigsErrors(t *testing.T) {
 	}
 }
 
+func TestReadSSHConfigs_Walk_InaccessibleDirectory(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "ssh-config-inaccessible")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	restrictedDir := filepath.Join(tempDir, "restricted")
+	if err := os.Mkdir(restrictedDir, 0755); err != nil {
+		t.Fatalf("Failed to create restricted directory: %v", err)
+	}
+	if err := os.Chmod(restrictedDir, 0300); err != nil {
+		t.Fatalf("Failed to chmod restricted directory: %v", err)
+	}
+	defer os.Chmod(restrictedDir, 0755)
+
+	_, err = fn.ReadSSHConfigs(tempDir)
+	if err == nil {
+		t.Fatal("Expected error for inaccessible directory, got nil")
+	}
+	if !strings.Contains(err.Error(), "not accessible") && !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("Expected not accessible or permission denied error, got: %v", err)
+	}
+}
+
+func TestReadSSHConfigs_Walk_UnreadableFile(t *testing.T) {
+	tempDir, err := os.MkdirTemp("", "ssh-config-unreadable")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	configPath := filepath.Join(tempDir, "config")
+	content := "Host example\n  HostName example.com\n"
+	if err := os.WriteFile(configPath, []byte(content), 0600); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	if err := os.Chmod(configPath, 0000); err != nil {
+		t.Fatalf("Failed to chmod config file: %v", err)
+	}
+
+	if fn.IsConfigFile(configPath) {
+		t.Log("config file detected as valid despite permissions")
+	}
+
+	cfg, err := fn.ReadSSHConfigs(tempDir)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if len(cfg.Configs) != 0 {
+		t.Fatalf("Expected unreadable file to be skipped, got %d configs", len(cfg.Configs))
+	}
+}
+
+func TestReadSSHConfigs_Walk_ErrorPropagation(t *testing.T) {
+	attempts := 0
+	for attempts < 5 {
+		tempDir, err := os.MkdirTemp("", "ssh-config-walk-error")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+
+		for i := 0; i < 200; i++ {
+			subdir := filepath.Join(tempDir, fmt.Sprintf("dir_%03d", i))
+			if err := os.MkdirAll(subdir, 0755); err != nil {
+				t.Fatalf("Failed to create subdir: %v", err)
+			}
+			configPath := filepath.Join(subdir, "config")
+			content := fmt.Sprintf("Host host-%d\n  HostName example.com\n", i)
+			if err := os.WriteFile(configPath, []byte(content), 0600); err != nil {
+				t.Fatalf("Failed to write config file: %v", err)
+			}
+		}
+
+		errCh := make(chan struct{})
+		go func(path string) {
+			time.Sleep(5 * time.Millisecond)
+			os.RemoveAll(path)
+			close(errCh)
+		}(tempDir)
+
+		_, err = fn.ReadSSHConfigs(tempDir)
+		<-errCh
+
+		if err != nil {
+			if strings.Contains(err.Error(), "failed to walk directory") {
+				return
+			}
+		}
+
+		os.RemoveAll(tempDir)
+		attempts++
+	}
+
+	t.Fatal("expected error propagation from filepath.Walk")
+}
+
 func TestReadSSHConfigs_Walk(t *testing.T) {
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "ssh-config-test")
@@ -442,7 +542,7 @@ func TestReadSingleConfig_ScannerError(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// 写入一些正常数据和一个超长行来触发 scanner 错误
-	longLine := strings.Repeat("a", bufio.MaxScanTokenSize+1)
+	longLine := strings.Repeat("a", bufio.MaxScanTokenSize*2)
 	content := "Host testhost\n" + longLine
 
 	if _, err := tmpfile.WriteString(content); err != nil {
@@ -458,7 +558,7 @@ func TestReadSingleConfig_ScannerError(t *testing.T) {
 
 	// 验证当发生扫描错误时返回 nil
 	if result != nil {
-		t.Errorf("Expected nil result when scanner error occurs, got: %v", result)
+		t.Fatalf("Expected nil result when scanner error occurs, got: %v", result)
 	}
 }
 
