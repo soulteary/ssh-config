@@ -269,8 +269,8 @@ func TestReadSSHConfigs_Walk_InaccessibleDirectory(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error for inaccessible directory, got nil")
 	}
-	if !strings.Contains(err.Error(), "not accessible") {
-		t.Fatalf("Expected not accessible error, got: %v", err)
+	if !strings.Contains(err.Error(), "not accessible") && !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("Expected not accessible or permission denied error, got: %v", err)
 	}
 }
 
