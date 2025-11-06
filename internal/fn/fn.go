@@ -29,6 +29,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var (
+	readFile  = os.ReadFile
+	writeFile = os.WriteFile
+	stat      = os.Stat
+	mkdirAll  = os.MkdirAll
+)
+
 func GetUserInputFromStdin() string {
 	var lines []string
 	scanner := bufio.NewScanner(os.Stdin)
@@ -130,7 +137,7 @@ func GetPathContent(src string) ([]byte, error) {
 
 	var content []byte
 	for _, filePath := range filePaths {
-		fileContent, err := os.ReadFile(filePath)
+		fileContent, err := readFile(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("no valid SSH config found in %s: %w", src, err)
 		}
@@ -145,7 +152,7 @@ func Save(dest string, content []byte) error {
 		return err
 	}
 
-	info, err := os.Stat(destDir)
+	info, err := stat(destDir)
 	if err != nil {
 		return fmt.Errorf("can not write to destination file: %v", err)
 	}
@@ -154,7 +161,7 @@ func Save(dest string, content []byte) error {
 		return fmt.Errorf("can not write to destination file: directory %s is not writable", destDir)
 	}
 
-	if err := os.WriteFile(dest, content, 0644); err != nil {
+	if err := writeFile(dest, content, 0644); err != nil {
 		return fmt.Errorf("can not write to destination file: %v", err)
 	}
 	return nil
@@ -173,7 +180,7 @@ func TidyLastEmptyLines(input []byte) []byte {
 }
 
 func ensureDirectory(destDir string) error {
-	info, err := os.Stat(destDir)
+	info, err := stat(destDir)
 	if err == nil {
 		if !info.IsDir() {
 			return fmt.Errorf("can not create destination directory: %s is not a directory", destDir)
@@ -187,7 +194,7 @@ func ensureDirectory(destDir string) error {
 
 	parent := filepath.Dir(destDir)
 	if parent != destDir {
-		if parentInfo, parentErr := os.Stat(parent); parentErr == nil {
+		if parentInfo, parentErr := stat(parent); parentErr == nil {
 			if !parentInfo.IsDir() {
 				return fmt.Errorf("can not create destination directory: parent %s is not a directory", parent)
 			}
@@ -197,7 +204,7 @@ func ensureDirectory(destDir string) error {
 		}
 	}
 
-	if err := os.MkdirAll(destDir, 0755); err != nil {
+	if err := mkdirAll(destDir, 0755); err != nil {
 		return fmt.Errorf("can not create destination directory: %v", err)
 	}
 
