@@ -93,11 +93,19 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	}
 
 	if !info.IsDir() {
+		if !isFileReadable(info) {
+			return config, nil
+		}
+
 		configFile := ReadSingleConfig(sshPath)
 		if configFile != nil {
 			config.Configs[sshPath] = configFile
 		}
 		return config, nil
+	}
+
+	if !isDirReadable(info) {
+		return nil, fmt.Errorf("failed to walk directory: %s is not accessible", sshPath)
 	}
 
 	err = filepath.Walk(sshPath, func(path string, info os.FileInfo, err error) error {
@@ -106,6 +114,9 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 		}
 
 		if info.IsDir() {
+			if !isDirReadable(info) {
+				return fmt.Errorf("directory %s is not accessible", path)
+			}
 			return nil
 		}
 
@@ -114,6 +125,10 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 		}
 
 		if !IsConfigFile(path) {
+			return nil
+		}
+
+		if !isFileReadable(info) {
 			return nil
 		}
 
