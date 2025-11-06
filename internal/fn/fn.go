@@ -122,20 +122,36 @@ func GetPathContent(src string) ([]byte, error) {
 		return nil, fmt.Errorf("no valid SSH config found in %s", src)
 	}
 
-	var content []byte
+	filePaths := make([]string, 0, len(configFiles.Configs))
 	for filePath := range configFiles.Configs {
+		filePaths = append(filePaths, filePath)
+	}
+	slices.Sort(filePaths)
+
+	var content []byte
+	for _, filePath := range filePaths {
 		fileContent, err := os.ReadFile(filePath)
-		if err == nil {
-			content = append(content, fileContent...)
+		if err != nil {
+			return nil, fmt.Errorf("no valid SSH config found in %s: %w", src, err)
 		}
+		content = append(content, fileContent...)
 	}
 	return content, nil
 }
 
 func Save(dest string, content []byte) error {
 	destDir := filepath.Dir(dest)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("can not create destination directory: %v", err)
+	if err := ensureDirectory(destDir); err != nil {
+		return err
+	}
+
+	info, err := os.Stat(destDir)
+	if err != nil {
+		return fmt.Errorf("can not write to destination file: %v", err)
+	}
+
+	if !isDirWritable(info) {
+		return fmt.Errorf("can not write to destination file: directory %s is not writable", destDir)
 	}
 
 	if err := os.WriteFile(dest, content, 0644); err != nil {
@@ -154,4 +170,36 @@ func TidyLastEmptyLines(input []byte) []byte {
 		end--
 	}
 	return input[:end+1]
+}
+
+func ensureDirectory(destDir string) error {
+	info, err := os.Stat(destDir)
+	if err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("can not create destination directory: %s is not a directory", destDir)
+		}
+		return nil
+	}
+
+	if !os.IsNotExist(err) {
+		return fmt.Errorf("can not create destination directory: %v", err)
+	}
+
+	parent := filepath.Dir(destDir)
+	if parent != destDir {
+		if parentInfo, parentErr := os.Stat(parent); parentErr == nil {
+			if !parentInfo.IsDir() {
+				return fmt.Errorf("can not create destination directory: parent %s is not a directory", parent)
+			}
+			if !isDirWritable(parentInfo) {
+				return fmt.Errorf("can not create destination directory: parent directory %s is not writable", parent)
+			}
+		}
+	}
+
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("can not create destination directory: %v", err)
+	}
+
+	return nil
 }
