@@ -33,7 +33,7 @@ type Dependencies struct {
 	GetContent            func(string) ([]byte, error)
 	SaveFile              func(string, []byte) error
 	GetUserInputFromStdin func() string
-	Process               func(string, string, Cmd.Args) []byte
+	Process               func(string, string, Cmd.Args) ([]byte, error)
 	CheckUseStdin         func() bool
 	UserHomeDir           func() (string, error)
 }
@@ -65,7 +65,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	}
 
 	fileType := Fn.DetectStringType(userInput)
-	result := deps.Process(fileType, userInput, args)
+	result, err := deps.Process(fileType, userInput, args)
+	if err != nil {
+		deps.Println("Error parsing config:", err)
+		return err
+	}
 
 	if pipeMode {
 		deps.Println(string(result))

@@ -86,7 +86,10 @@ func TestProcess(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Parser.Process(tt.fileType, tt.input, tt.args)
+			got, err := Parser.Process(tt.fileType, tt.input, tt.args)
+			if err != nil {
+				t.Fatalf("Process() error = %v", err)
+			}
 			if tt.name == "TEXT to JSON" {
 				gotData := Fn.GetJSONData(string(got))
 				wantData := Fn.GetJSONData(string(tt.want))

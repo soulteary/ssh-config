@@ -23,6 +23,7 @@ import (
 
 	Define "github.com/soulteary/ssh-config/internal/define"
 	Fn "github.com/soulteary/ssh-config/internal/fn"
+	"github.com/soulteary/ssh-config/pkg/lexer"
 )
 
 type SSHHostConfigGroup struct {
@@ -30,50 +31,111 @@ type SSHHostConfigGroup struct {
 	Config   map[string]string
 }
 
-func GroupSSHConfigFromString(input string) map[string]SSHHostConfigGroup {
+func GroupSSHConfigFromString(input string) (map[string]SSHHostConfigGroup, error) {
+	tokens, err := lexer.Lex(input)
+	if err != nil {
+		return nil, err
+	}
+	return groupFromTokens(tokens), nil
+}
+
+// groupFromTokens builds SSHHostConfigGroup map from a lexer token stream.
+func groupFromTokens(tokens []lexer.Token) map[string]SSHHostConfigGroup {
 	hostConfigs := make(map[string]SSHHostConfigGroup)
 	var currentHost string
 	var currentComments []string
-
-	lines := strings.Split(input, "\n")
-	for _, rawLine := range lines {
-		line := strings.TrimSpace(rawLine)
-
-		if line == "" {
-			continue
+	i := 0
+	next := func() (lexer.Token, bool) {
+		if i >= len(tokens) {
+			return lexer.Token{Kind: lexer.TokenEOF}, false
 		}
-
-		if strings.HasPrefix(line, "#") {
-			currentComments = append(currentComments, strings.TrimSpace(line[1:]))
-		} else if strings.HasPrefix(line, "Host ") {
-			currentHost = strings.TrimSpace(strings.TrimPrefix(line, "Host "))
-			hostConfigs[currentHost] = SSHHostConfigGroup{
-				Comments: currentComments,
-				Config:   make(map[string]string),
-			}
-			currentComments = nil
-		} else if strings.HasPrefix(line, "Include ") {
-			// ignore include
-		} else {
-			parts := strings.SplitN(line, " ", 2)
-			if len(parts) == 2 {
-				if hostConfigs[currentHost].Config == nil {
-					config := hostConfigs[currentHost]
-					config.Config = make(map[string]string)
-					hostConfigs[currentHost] = config
-				}
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
-				hostConfigs[currentHost].Config[key] = value
-			}
+		t := tokens[i]
+		i++
+		return t, true
+	}
+	peek := func() (lexer.Token, bool) {
+		if i >= len(tokens) {
+			return lexer.Token{Kind: lexer.TokenEOF}, false
 		}
+		return tokens[i], true
 	}
 
+	for {
+		tok, ok := next()
+		if !ok || tok.Kind == lexer.TokenEOF {
+			break
+		}
+		switch tok.Kind {
+		case lexer.TokenNewline:
+			continue
+		case lexer.TokenComment:
+			currentComments = append(currentComments, tok.Value)
+		case lexer.TokenKeyword:
+			kw := strings.ToLower(tok.Value)
+			switch kw {
+			case "host":
+				var parts []string
+				for {
+					t, _ := peek()
+					if t.Kind != lexer.TokenValue && t.Kind != lexer.TokenQuoted {
+						break
+					}
+					next()
+					parts = append(parts, t.Value)
+				}
+				currentHost = strings.TrimSpace(strings.Join(parts, " "))
+				if currentHost != "" {
+					hostConfigs[currentHost] = SSHHostConfigGroup{
+						Comments: currentComments,
+						Config:   make(map[string]string),
+					}
+					currentComments = nil
+				}
+			case "include", "match":
+				for {
+					t, _ := peek()
+					if t.Kind == lexer.TokenNewline || t.Kind == lexer.TokenEOF {
+						break
+					}
+					next()
+				}
+			}
+		case lexer.TokenIdent:
+			key := tok.Value
+			var valueParts []string
+			// optional Equals
+			if t, _ := peek(); t.Kind == lexer.TokenEquals {
+				next()
+			}
+			for {
+				t, _ := peek()
+				if t.Kind != lexer.TokenValue && t.Kind != lexer.TokenQuoted {
+					break
+				}
+				next()
+				valueParts = append(valueParts, t.Value)
+			}
+			value := strings.TrimSpace(strings.Join(valueParts, " "))
+			// Allow empty values per ssh_config(5): first obtained value is used; empty is valid.
+			if hostConfigs[currentHost].Config == nil {
+				cfg := hostConfigs[currentHost]
+				cfg.Config = make(map[string]string)
+				hostConfigs[currentHost] = cfg
+			}
+			hostConfigs[currentHost].Config[key] = value
+		default:
+			// TokenValue at line start is only after Keyword; already handled
+			continue
+		}
+	}
 	return hostConfigs
 }
 
-func GroupSSHConfig(userInput string) []Define.HostConfig {
-	configs := GroupSSHConfigFromString(userInput)
+func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
+	configs, err := GroupSSHConfigFromString(userInput)
+	if err != nil {
+		return nil, err
+	}
 	hostConfigs := make([]Define.HostConfig, 0)
 	for host, hostConfig := range configs {
 		rawInfo := GetSSHConfigContent(host, hostConfig)
@@ -86,7 +148,7 @@ func GroupSSHConfig(userInput string) []Define.HostConfig {
 			Config: config,
 		})
 	}
-	return hostConfigs
+	return hostConfigs, nil
 }
 
 type SSHHostConfigGrouped struct {

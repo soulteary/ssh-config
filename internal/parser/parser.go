@@ -24,7 +24,7 @@ import (
 	Fn "github.com/soulteary/ssh-config/internal/fn"
 )
 
-func Process(fileType string, userInput string, args Cmd.Args) []byte {
+func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
 	var hostConfigs []Define.HostConfig
 
 	switch strings.ToUpper(fileType) {
@@ -33,19 +33,23 @@ func Process(fileType string, userInput string, args Cmd.Args) []byte {
 	case "JSON":
 		hostConfigs = GroupJSONConfig(userInput)
 	case "TEXT":
-		hostConfigs = GroupSSHConfig(userInput)
+		var err error
+		hostConfigs, err = GroupSSHConfig(userInput)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if args.ToYAML {
-		return Fn.TidyLastEmptyLines(ConvertToYAML(hostConfigs))
+		return Fn.TidyLastEmptyLines(ConvertToYAML(hostConfigs)), nil
 	}
 
 	if args.ToSSH {
-		return Fn.TidyLastEmptyLines(ConvertToSSH(hostConfigs))
+		return Fn.TidyLastEmptyLines(ConvertToSSH(hostConfigs)), nil
 	}
 
 	if args.ToJSON {
-		return Fn.TidyLastEmptyLines(ConvertToJSON(hostConfigs))
+		return Fn.TidyLastEmptyLines(ConvertToJSON(hostConfigs)), nil
 	}
-	return nil
+	return nil, nil
 }
