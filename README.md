@@ -107,7 +107,7 @@ cat input.conf | ssh-config -to-yaml > output.yaml
 
 ### Dependencies
 
-- Go 1.23+
+- Go 1.26+
 
 ### Build
 
