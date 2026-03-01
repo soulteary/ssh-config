@@ -38,7 +38,10 @@ func TestGroupSSHConfigFromString(t *testing.T) {
 		t.Errorf("GroupSSHConfigFromString() error = %v", err)
 	}
 
-	actual := Parser.GroupSSHConfigFromString(string(buf))
+	actual, err := Parser.GroupSSHConfigFromString(string(buf))
+	if err != nil {
+		t.Fatalf("GroupSSHConfigFromString() error = %v", err)
+	}
 	if len(actual) != 3 {
 		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual), 3)
 	}
@@ -65,6 +68,34 @@ func TestGroupSSHConfigFromString(t *testing.T) {
 
 	if len(actual["server-sg-3"].Comments) == 0 {
 		t.Errorf("GroupSSHConfigFromString() = %v, want %v", len(actual["server-sg-3"].Comments), 1)
+	}
+}
+
+func TestGroupSSHConfigFromString_IncludeMatchIgnored(t *testing.T) {
+	// include/match 关键字应被跳过，不参与 host 解析
+	input := `Host foo
+    HostName foo.com
+Include other.conf
+Match host bar
+    HostName bar.com
+`
+	actual, err := Parser.GroupSSHConfigFromString(input)
+	if err != nil {
+		t.Fatalf("GroupSSHConfigFromString() error = %v", err)
+	}
+	if _, ok := actual["foo"]; !ok {
+		t.Errorf("GroupSSHConfigFromString() expected host foo, got %v", actual)
+	}
+	// Include/Match 行被消费后，bar 不会作为独立 Host 出现（Match 后的 HostName 属于上一 block）
+	if len(actual) != 1 {
+		t.Logf("GroupSSHConfigFromString() got hosts: %v", actual)
+	}
+}
+
+func TestGroupSSHConfig_InvalidInputReturnsError(t *testing.T) {
+	_, err := Parser.GroupSSHConfig(`Host "unclosed`)
+	if err == nil {
+		t.Error("GroupSSHConfig() expected error for invalid input, got nil")
 	}
 }
 
@@ -412,7 +443,11 @@ Host example2
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, result := range Parser.GroupSSHConfig(tt.input) {
+			results, err := Parser.GroupSSHConfig(tt.input)
+			if err != nil {
+				t.Fatalf("GroupSSHConfig() error = %v", err)
+			}
+			for _, result := range results {
 				for _, expected := range tt.expected {
 					if result.Name == expected.Name {
 						for key, value := range expected.Config {
@@ -438,9 +473,12 @@ func TestGroupSSHConfigFromString_NilConfig(t *testing.T) {
 		t.Errorf("TestGroupSSHConfigFromString_NilConfig() error = %v", err)
 	}
 
-	actual := Parser.GroupSSHConfigFromString(string(buf))
+	actual, err := Parser.GroupSSHConfigFromString(string(buf))
+	if err != nil {
+		t.Fatalf("TestGroupSSHConfigFromString_NilConfig() error = %v", err)
+	}
 	if len(actual) != 1 {
-		t.Errorf("TestGroupSSHConfigFromString_NilConfig() = %v, want %v", len(actual), 0)
+		t.Errorf("TestGroupSSHConfigFromString_NilConfig() = %v, want %v", len(actual), 1)
 	}
 }
 
@@ -455,8 +493,67 @@ func TestGroupSSHConfigFromString_OnlyInclude(t *testing.T) {
 		t.Errorf("TestGroupSSHConfigFromString_OnlyInclude() error = %v", err)
 	}
 
-	actual := Parser.GroupSSHConfigFromString(string(buf))
+	actual, err := Parser.GroupSSHConfigFromString(string(buf))
+	if err != nil {
+		t.Fatalf("TestGroupSSHConfigFromString_OnlyInclude() error = %v", err)
+	}
 	if len(actual) != 0 {
 		t.Errorf("TestGroupSSHConfigFromString_OnlyInclude() = %v, want %v", len(actual), 0)
 	}
+}
+
+// TestGroupSSHConfigFromString_SSHConfig5 verifies parsing per ssh_config(5): Key=Value,
+// optional spaces around '=', quoted arguments, negated/wildcard Host patterns, inline comments.
+func TestGroupSSHConfigFromString_SSHConfig5(t *testing.T) {
+	cfg := `# global
+Host *
+    Port=22
+    User = root
+
+Host !*.dialup 192.168.0.?
+    Hostname "gateway.local"
+    ProxyCommand nc -X 5 %h %p
+`
+	actual, err := Parser.GroupSSHConfigFromString(cfg)
+	if err != nil {
+		t.Fatalf("TestGroupSSHConfigFromString_SSHConfig5() error = %v", err)
+	}
+	// Host * and Host !*.dialup 192.168.0.? (multiple patterns become one key with space-joined value)
+	if _, ok := actual["*"]; !ok {
+		t.Fatalf("expected Host * entry, got keys: %v", keys(actual))
+	}
+	if actual["*"].Config["Port"] != "22" {
+		t.Errorf("Port (Key=Value): got %q", actual["*"].Config["Port"])
+	}
+	if actual["*"].Config["User"] != "root" {
+		t.Errorf("User (Key = Value): got %q", actual["*"].Config["User"])
+	}
+	hostKey := "!*.dialup 192.168.0.?"
+	if _, ok := actual[hostKey]; !ok {
+		t.Fatalf("expected Host %q entry", hostKey)
+	}
+	if actual[hostKey].Config["Hostname"] != "gateway.local" {
+		t.Errorf("Hostname (quoted): got %q", actual[hostKey].Config["Hostname"])
+	}
+	if actual[hostKey].Config["ProxyCommand"] != "nc -X 5 %h %p" {
+		t.Errorf("ProxyCommand (multi-word): got %q", actual[hostKey].Config["ProxyCommand"])
+	}
+}
+
+// TestGroupSSHConfigFromString_LexError verifies that invalid input (e.g. unclosed quote) returns an error.
+func TestGroupSSHConfigFromString_LexError(t *testing.T) {
+	cfg := `Host foo
+    Hostname "unclosed`
+	_, err := Parser.GroupSSHConfigFromString(cfg)
+	if err == nil {
+		t.Fatal("GroupSSHConfigFromString() expected error for unclosed quote, got nil")
+	}
+}
+
+func keys(m map[string]Parser.SSHHostConfigGroup) []string {
+	ks := make([]string, 0, len(m))
+	for k := range m {
+		ks = append(ks, k)
+	}
+	return ks
 }

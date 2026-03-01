@@ -19,6 +19,7 @@ package parser_test
 import (
 	"os"
 	"path"
+	"reflect"
 	"testing"
 
 	Cmd "github.com/soulteary/ssh-config/cmd"
@@ -82,18 +83,28 @@ func TestProcess(t *testing.T) {
 			args:     Cmd.Args{},
 			want:     nil,
 		},
+		{
+			name:     "No output format returns nil",
+			fileType: "YAML",
+			input:    "Group x:\n  Hosts:\n    h: {}",
+			args:     Cmd.Args{}, // ToYAML/ToJSON/ToSSH 均为 false
+			want:     nil,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := Parser.Process(tt.fileType, tt.input, tt.args)
-			if tt.name == "TEXT to JSON" {
+			got, err := Parser.Process(tt.fileType, tt.input, tt.args)
+			if err != nil {
+				t.Fatalf("Process() error = %v", err)
+			}
+			switch tt.name {
+			case "TEXT to JSON":
 				gotData := Fn.GetJSONData(string(got))
 				wantData := Fn.GetJSONData(string(tt.want))
 				if len(gotData) != len(wantData) {
 					t.Errorf("Process() = %v, want %v", len(gotData), len(wantData))
 				}
-
 				for gotItem := range gotData {
 					for wantItem := range wantData {
 						if gotData[gotItem].Name == wantData[wantItem].Name {
@@ -105,12 +116,30 @@ func TestProcess(t *testing.T) {
 						}
 					}
 				}
-
-			} else {
+			case "JSON to YAML":
+				// 按语义比较，避免因稳定输出顺序导致与旧 YAML 字符串不一致
+				gotYAML := Fn.GetYamlData(string(got))
+				wantYAML := Fn.GetYamlData(string(tt.want))
+				if !reflect.DeepEqual(gotYAML, wantYAML) {
+					t.Errorf("Process() YAML content got = %v, want %v", gotYAML, wantYAML)
+				}
+			case "No output format returns nil":
+				if got != nil || tt.want != nil {
+					t.Errorf("Process() = %v, want %v", got, tt.want)
+				}
+			default:
 				if string(got) != string(tt.want) {
 					t.Errorf("Process() = %v, want %v", string(got), string(tt.want))
 				}
 			}
 		})
+	}
+}
+
+func TestProcess_InvalidTEXT_ReturnsError(t *testing.T) {
+	// 未闭合引号会使 Lex 报错，进而 GroupSSHConfig 返回 error
+	_, err := Parser.Process("TEXT", `Host "unclosed`, Cmd.Args{ToYAML: true})
+	if err == nil {
+		t.Error("Process() expected error for invalid TEXT input, got nil")
 	}
 }

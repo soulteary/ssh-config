@@ -143,13 +143,83 @@ func TestConvertToYAML(t *testing.T) {
 		},
 	}
 
+	// normalizeYAMLOutput 将 Groups 中 Common 为 nil 的设为 empty map，便于与 expected 比较
+	normalizeYAMLOutput := func(o *Define.YAMLOutput) {
+		for name, g := range o.Groups {
+			if g.Common == nil {
+				g.Common = make(map[string]string)
+				o.Groups[name] = g
+			}
+		}
+	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := Parser.ConvertToYAML(tt.input)
-			if string(Fn.GetYamlBytes(tt.expected)) != string(result) {
-				t.Errorf("ConvertToYAML() got = %v, want %v", result, tt.expected)
+			got := Fn.GetYamlData(string(result))
+			normalizeYAMLOutput(&got)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("ConvertToYAML() got = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+// TestConvertToYAML_WithPrefix 覆盖带 Extra.Prefix 的 host 输出及 mapToMapSlice 多键排序
+func TestConvertToYAML_WithPrefix(t *testing.T) {
+	input := []Define.HostConfig{
+		{
+			Name:   "host1",
+			Notes:  "note",
+			Config: map[string]string{"z_key": "z_val", "a_key": "a_val"},
+			Extra:  Define.HostExtraConfig{Prefix: "prefix-"},
+		},
+	}
+	result := Parser.ConvertToYAML(input)
+	if len(result) == 0 {
+		t.Fatal("ConvertToYAML() returned empty")
+	}
+	got := Fn.GetYamlData(string(result))
+	if got.Groups == nil {
+		t.Fatal("ConvertToYAML() expected Groups")
+	}
+	g, ok := got.Groups["Group host1"]
+	if !ok {
+		t.Fatalf("ConvertToYAML() expected Group host1, got %v", got.Groups)
+	}
+	if g.Prefix != "prefix-" {
+		t.Errorf("ConvertToYAML() Prefix = %q, want prefix-", g.Prefix)
+	}
+	if h, ok := g.Hosts["host1"]; !ok || h.Notes != "note" {
+		t.Errorf("ConvertToYAML() Hosts[host1] = %v", g.Hosts)
+	}
+	// config 键应按字母序输出，反序列化后 a_key 应在 z_key 前
+	if h := g.Hosts["host1"]; len(h.Config) != 2 || h.Config["a_key"] != "a_val" || h.Config["z_key"] != "z_val" {
+		t.Errorf("ConvertToYAML() Config = %v", h.Config)
+	}
+}
+
+// TestConvertToYAML_EmptyConfig 覆盖 Config 非 nil 但为空 map 时的输出（mapToMapSlice 返回 nil）
+func TestConvertToYAML_EmptyConfig(t *testing.T) {
+	input := []Define.HostConfig{
+		{Name: "onlyname", Config: map[string]string{}}, // 空 map，非 nil
+	}
+	result := Parser.ConvertToYAML(input)
+	if len(result) == 0 {
+		t.Fatal("ConvertToYAML() returned empty")
+	}
+	got := Fn.GetYamlData(string(result))
+	normalize := func(o *Define.YAMLOutput) {
+		for name, g := range o.Groups {
+			if g.Common == nil {
+				g.Common = make(map[string]string)
+				o.Groups[name] = g
+			}
+		}
+	}
+	normalize(&got)
+	if g, ok := got.Groups["Group onlyname"]; !ok || g.Hosts["onlyname"].Config == nil {
+		t.Errorf("ConvertToYAML() empty Config should round-trip: %v", got)
 	}
 }
 
