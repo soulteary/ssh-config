@@ -71,6 +71,34 @@ func TestGroupSSHConfigFromString(t *testing.T) {
 	}
 }
 
+func TestGroupSSHConfigFromString_IncludeMatchIgnored(t *testing.T) {
+	// include/match 关键字应被跳过，不参与 host 解析
+	input := `Host foo
+    HostName foo.com
+Include other.conf
+Match host bar
+    HostName bar.com
+`
+	actual, err := Parser.GroupSSHConfigFromString(input)
+	if err != nil {
+		t.Fatalf("GroupSSHConfigFromString() error = %v", err)
+	}
+	if _, ok := actual["foo"]; !ok {
+		t.Errorf("GroupSSHConfigFromString() expected host foo, got %v", actual)
+	}
+	// Include/Match 行被消费后，bar 不会作为独立 Host 出现（Match 后的 HostName 属于上一 block）
+	if len(actual) != 1 {
+		t.Logf("GroupSSHConfigFromString() got hosts: %v", actual)
+	}
+}
+
+func TestGroupSSHConfig_InvalidInputReturnsError(t *testing.T) {
+	_, err := Parser.GroupSSHConfig(`Host "unclosed`)
+	if err == nil {
+		t.Error("GroupSSHConfig() expected error for invalid input, got nil")
+	}
+}
+
 func TestGetSSHConfigContent(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -97,6 +97,18 @@ func TestRun(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "Process returns error",
+			args: Cmd.Args{ToYAML: true, Src: "input.cfg", Dest: "out.yaml"},
+			deps: Dependencies{
+				StdinStat:     func() (os.FileInfo, error) { return nil, errors.New("not a pipe") },
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				GetContent:    func(string) ([]byte, error) { return []byte("Host \"unclosed"), nil },
+				Process:       func(string, string, Cmd.Args) ([]byte, error) { return nil, errors.New("parsing config failed") },
+				CheckUseStdin: func() bool { return false },
+			},
+			wantErr: true,
+		},
+		{
 			name: "File save error",
 			args: Cmd.Args{ToJSON: true, Src: "input.txt", Dest: "output.json"},
 			deps: Dependencies{

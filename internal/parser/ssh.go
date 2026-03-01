@@ -19,6 +19,7 @@ package parser
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	Define "github.com/soulteary/ssh-config/internal/define"
@@ -136,8 +137,15 @@ func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	hostConfigs := make([]Define.HostConfig, 0)
-	for host, hostConfig := range configs {
+	hosts := make([]string, 0, len(configs))
+	for host := range configs {
+		hosts = append(hosts, host)
+	}
+	slices.Sort(hosts)
+
+	hostConfigs := make([]Define.HostConfig, 0, len(hosts))
+	for _, host := range hosts {
+		hostConfig := configs[host]
 		rawInfo := GetSSHConfigContent(host, hostConfig)
 		hostInfo := ParseSSHConfig(rawInfo.Config, rawInfo.Comments)
 		config, name, notes := GetSingleHostData(hostInfo)
