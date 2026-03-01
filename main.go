@@ -42,7 +42,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
 		deps.Println(notValidReason)
-		return fmt.Errorf(notValidReason)
+		return fmt.Errorf("%s", notValidReason)
 	}
 
 	pipeMode := deps.CheckUseStdin()
@@ -53,7 +53,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
 		if !isValid {
 			deps.Println(notValidReason)
-			return fmt.Errorf(notValidReason)
+			return fmt.Errorf("%s", notValidReason)
 		}
 
 		content, err := deps.GetContent(args.Src)
