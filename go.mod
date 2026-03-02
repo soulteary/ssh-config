@@ -1,4 +1,4 @@
-module github.com/soulteary/ssh-config
+module github.com/soulteary/ssh-config/v2
 
 go 1.26.0
 

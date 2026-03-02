@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/soulteary/ssh-config/internal/define"
+	"github.com/soulteary/ssh-config/v2/internal/define"
 )
 
 type ConfigFile struct {

@@ -25,7 +25,7 @@ import (
 	"slices"
 	"strings"
 
-	Define "github.com/soulteary/ssh-config/internal/define"
+	Define "github.com/soulteary/ssh-config/v2/internal/define"
 	"gopkg.in/yaml.v2"
 )
 

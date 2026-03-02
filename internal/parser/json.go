@@ -17,8 +17,8 @@
 package parser
 
 import (
-	Define "github.com/soulteary/ssh-config/internal/define"
-	Fn "github.com/soulteary/ssh-config/internal/fn"
+	Define "github.com/soulteary/ssh-config/v2/internal/define"
+	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 )
 
 func ConvertToJSON(input []Define.HostConfig) []byte {

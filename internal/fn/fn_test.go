@@ -27,8 +27,8 @@ import (
 	"strings"
 	"testing"
 
-	Define "github.com/soulteary/ssh-config/internal/define"
-	Fn "github.com/soulteary/ssh-config/internal/fn"
+	Define "github.com/soulteary/ssh-config/v2/internal/define"
+	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 )
 
 func TestGetUserInputFromStdin(t *testing.T) {

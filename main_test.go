@@ -24,7 +24,7 @@ import (
 	"path"
 	"testing"
 
-	Cmd "github.com/soulteary/ssh-config/cmd"
+	Cmd "github.com/soulteary/ssh-config/v2/cmd"
 )
 
 func TestRun(t *testing.T) {

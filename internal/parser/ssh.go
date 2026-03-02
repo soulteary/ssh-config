@@ -22,9 +22,9 @@ import (
 	"slices"
 	"strings"
 
-	Define "github.com/soulteary/ssh-config/internal/define"
-	Fn "github.com/soulteary/ssh-config/internal/fn"
-	"github.com/soulteary/ssh-config/pkg/lexer"
+	Define "github.com/soulteary/ssh-config/v2/internal/define"
+	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
+	"github.com/soulteary/ssh-config/v2/pkg/lexer"
 )
 
 type SSHHostConfigGroup struct {

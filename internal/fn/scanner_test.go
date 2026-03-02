@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/soulteary/ssh-config/internal/fn"
+	"github.com/soulteary/ssh-config/v2/internal/fn"
 )
 
 func TestIsExcluded(t *testing.T) {
