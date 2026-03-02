@@ -81,70 +81,28 @@ changelog:
     - title: Other work
       order: 9999
 
-dockers:
-  - image_templates:
-      - "soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
+dockers_v2:
+  - images:
+      - soulteary/ssh-config
+      - ghcr.io/soulteary/ssh-config
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
     dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
+    flags:
       - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
-      - "--label=io.artifacthub.package.logo-url=https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
-      - '--label=io.artifacthub.package.maintainers=[{"name":"soulteary","email":"soulteary@gmail.com"}]'
-      - "--label=io.artifacthub.package.license=Apache-v2"
-      - "--label=org.opencontainers.image.description=100% Coverage, Use more expressive YAML / JSON to manage your Config files."
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-  - image_templates:
-      - "soulteary/ssh-config:v{{ .Version }}-arm64"
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
-    dockerfile: Dockerfile
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
-      - "--label=io.artifacthub.package.logo-url=https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
-      - '--label=io.artifacthub.package.maintainers=[{"name":"soulteary","email":"soulteary@gmail.com"}]'
-      - "--label=io.artifacthub.package.license=Apache-v2"
-      - "--label=org.opencontainers.image.description=100% Coverage, Use more expressive YAML / JSON to manage your Config files."
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-
-docker_manifests:
-  - name_template: "soulteary/ssh-config:v{{ .Version }}"
-    image_templates:
-      - "soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "soulteary/ssh-config:v{{ .Version }}-arm64"
-  - name_template: "ghcr.io/soulteary/ssh-config:v{{ .Version }}"
-    image_templates:
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
-  - name_template: "{{ if not .IsNightly }}soulteary/ssh-config:latest{{ end }}"
-    image_templates:
-      - "soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "soulteary/ssh-config:v{{ .Version }}-arm64"
-  - name_template: "{{ if not .IsNightly }}ghcr.io/soulteary/ssh-config:latest{{ end }}"
-    image_templates:
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
-  - name_template: "{{ if .IsNightly }}soulteary/ssh-config:nightly{{ end }}"
-    image_templates:
-      - "soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "soulteary/ssh-config:v{{ .Version }}-arm64"
-  - name_template: "{{ if .IsNightly }}ghcr.io/soulteary/ssh-config:nightly{{ end }}"
-    image_templates:
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-amd64"
-      - "ghcr.io/soulteary/ssh-config:v{{ .Version }}-arm64"
+    labels:
+      io.artifacthub.package.readme-url: "https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
+      io.artifacthub.package.logo-url: "https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
+      io.artifacthub.package.maintainers: '[{"name":"soulteary","email":"soulteary@gmail.com"}]'
+      io.artifacthub.package.license: Apache-v2
+      org.opencontainers.image.description: "100% Coverage, Use more expressive YAML / JSON to manage your Config files."
+      org.opencontainers.image.created: "{{ .Date }}"
+      org.opencontainers.image.name: "{{ .ProjectName }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.source: "{{ .GitURL }}"
 
 archives:
   - name_template: >-
@@ -156,7 +114,7 @@ archives:
       {{- if .Arm }}v{{ .Arm }}{{ end -}}
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [ 'zip' ]
     builds_info:
       group: root
       owner: root
