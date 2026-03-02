@@ -21,6 +21,13 @@ SSH Config Tool is a command-line utility for managing SSH configuration files. 
 
 Use Docker or download the binary file suitable for your system and CPU architecture from the [GitHub release page](https://github.com/soulteary/ssh-config/releases).
 
+Alternatively, you can install it via Homebrew.
+
+```bash
+brew tap soulteary/tap
+brew install soulteary/tap/ssh-config
+```
+
 ## Usage
 
 ### Basic Usage
