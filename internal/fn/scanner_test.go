@@ -306,14 +306,16 @@ func TestReadSSHConfigs_Walk_UnreadableFile(t *testing.T) {
 
 func TestReadSSHConfigs_Walk_ErrorPropagation(t *testing.T) {
 	attempts := 0
-	for attempts < 5 {
+	for attempts < 10 {
 		tempDir, err := os.MkdirTemp("", "ssh-config-walk-error")
 		if err != nil {
 			t.Fatalf("Failed to create temp dir: %v", err)
 		}
 
-		for i := 0; i < 200; i++ {
-			subdir := filepath.Join(tempDir, fmt.Sprintf("dir_%03d", i))
+		// Use enough subdirs so that filepath.Walk takes longer than the removal delay,
+		// making it likely that RemoveAll runs mid-walk and triggers an error.
+		for i := 0; i < 1500; i++ {
+			subdir := filepath.Join(tempDir, fmt.Sprintf("dir_%04d", i))
 			if err := os.MkdirAll(subdir, 0755); err != nil {
 				t.Fatalf("Failed to create subdir: %v", err)
 			}
@@ -326,7 +328,7 @@ func TestReadSSHConfigs_Walk_ErrorPropagation(t *testing.T) {
 
 		errCh := make(chan struct{})
 		go func(path string) {
-			time.Sleep(5 * time.Millisecond)
+			time.Sleep(2 * time.Millisecond)
 			os.RemoveAll(path)
 			close(errCh)
 		}(tempDir)
