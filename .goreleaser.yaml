@@ -90,8 +90,11 @@ dockers_v2:
       - "{{ if .IsNightly }}nightly{{ end }}"
       - "{{ if not .IsNightly }}latest{{ end }}"
     dockerfile: Dockerfile
+    # 禁用 SBOM/attestation，避免 CI 默认 docker 驱动不支持时报错
+    sbom: false
     flags:
       - "--pull"
+      - "--provenance=false"
     labels:
       io.artifacthub.package.readme-url: "https://raw.githubusercontent.com/soulteary/ssh-config/main/README.md"
       io.artifacthub.package.logo-url: "https://raw.githubusercontent.com/soulteary/ssh-config/refs/heads/main/.github/github-repo-card.png"
