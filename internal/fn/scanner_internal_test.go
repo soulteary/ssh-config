@@ -1,7 +1,6 @@
 package fn
 
 import (
-	"bufio"
 	"os"
 	"strings"
 	"testing"
@@ -14,7 +13,7 @@ func TestReadSingleConfigScannerErrorInternal(t *testing.T) {
 	}
 	defer os.Remove(tmpfile.Name())
 
-	longLine := strings.Repeat("a", bufio.MaxScanTokenSize*2)
+	longLine := strings.Repeat("a", maxScannedConfigLine+1)
 	content := "Host testhost\n" + longLine
 
 	if _, err := tmpfile.WriteString(content); err != nil {

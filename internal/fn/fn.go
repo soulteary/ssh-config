@@ -194,6 +194,9 @@ func GetPathContent(src string) ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("no valid SSH config found in %s: %w", src, err)
 		}
+		if len(content) > 0 && content[len(content)-1] != '\n' && content[len(content)-1] != '\r' {
+			content = append(content, '\n')
+		}
 		content = append(content, fileContent...)
 	}
 	return content, nil

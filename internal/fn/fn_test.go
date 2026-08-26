@@ -510,9 +510,8 @@ func TestGetPathContent(t *testing.T) {
 	if err != nil {
 		t.Errorf("GetPathContent failed for directory: %v", err)
 	}
-	expectedContent := append(content1, content2...)
-	expectedContent2 := append(content1, content2...)
-	if !reflect.DeepEqual(content, expectedContent) || !reflect.DeepEqual(content, expectedContent2) {
+	expectedContent := []byte("Host test1\nHost test2")
+	if !reflect.DeepEqual(content, expectedContent) {
 		t.Errorf("Expected %s, got %s", expectedContent, content)
 	}
 
@@ -592,6 +591,26 @@ func TestGetPathContent(t *testing.T) {
 	_, err = Fn.GetPathContent(dirWithCorruptFile)
 	if err == nil {
 		t.Fatalf("Expected error for directory with corrupt file, got nil")
+	}
+}
+
+func TestGetPathContentSeparatesFilesWithoutFinalNewline(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	first := filepath.Join(directory, "10-first")
+	second := filepath.Join(directory, "20-second")
+	if err := os.WriteFile(first, []byte("Host first"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(second, []byte("Host second\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Fn.GetPathContent(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "Host first\nHost second\n" {
+		t.Fatalf("GetPathContent() = %q", got)
 	}
 }
 

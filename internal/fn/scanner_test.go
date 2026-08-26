@@ -17,7 +17,6 @@
 package fn_test
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -534,6 +533,19 @@ Nothing to see here`,
 	}
 }
 
+func TestIsConfigFileRecognizesCommentsAndInclude(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "config")
+	content := strings.Repeat("# explanatory header\n", 12) + "Include config.d/*\n"
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if !fn.IsConfigFile(path) {
+		t.Fatal("IsConfigFile() rejected a valid Include-only config after a long comment header")
+	}
+}
+
 // TestReadSingleConfig_ScannerError tests the scanner error handling
 func TestReadSingleConfig_ScannerError(t *testing.T) {
 	// 创建一个包含无效数据的文件
@@ -544,7 +556,7 @@ func TestReadSingleConfig_ScannerError(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// 写入一些正常数据和一个超长行来触发 scanner 错误
-	longLine := strings.Repeat("a", bufio.MaxScanTokenSize*2)
+	longLine := strings.Repeat("a", 1024*1024+1)
 	content := "Host testhost\n" + longLine
 
 	if _, err := tmpfile.WriteString(content); err != nil {

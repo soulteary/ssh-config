@@ -24,7 +24,10 @@ import (
 	"strings"
 
 	"github.com/soulteary/ssh-config/v2/internal/define"
+	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
 )
+
+const maxScannedConfigLine = 1024 * 1024
 
 type ConfigFile struct {
 	Path    string
@@ -57,29 +60,24 @@ func IsConfigFile(path string) bool {
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	lineCount := 0
-	validLines := 0
-
-	// check first 5 lines
-	for scanner.Scan() && lineCount < 5 {
+	scanner.Buffer(make([]byte, 64*1024), maxScannedConfigLine)
+	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-		lineCount++
-
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-
-		parts := strings.Fields(line)
-		if len(parts) >= 2 {
-			key := strings.ToLower(parts[0])
-			switch key {
-			case "host", "hostname", "user", "port", "identityfile", "proxycommand":
-				validLines++
+		doc, err := sshconfig.Parse([]byte(line))
+		if err != nil {
+			continue
+		}
+		nodes := doc.Nodes()
+		if len(nodes) == 1 && nodes[0].Directive != nil {
+			if _, known := sshconfig.LookupKeyword(nodes[0].Directive.KeywordValue); known {
+				return true
 			}
 		}
 	}
-
-	return validLines > 0
+	return false
 }
 
 func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
@@ -117,6 +115,9 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			if !isDirReadable(info) {
 				return fmt.Errorf("directory %s is not accessible", path)
 			}
+			return nil
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
 			return nil
 		}
 
@@ -159,6 +160,7 @@ func ReadSingleConfig(path string) *ConfigFile {
 	}
 
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), maxScannedConfigLine)
 	var currentHost string
 	var content []string
 
