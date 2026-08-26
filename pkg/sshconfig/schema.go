@@ -9,7 +9,7 @@ import (
 	"slices"
 	"unicode/utf8"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // SchemaVersion is the lossless structured configuration format version.
@@ -232,8 +232,17 @@ func MarshalSchemaYAML(schema Schema) ([]byte, error) {
 // UnmarshalSchemaYAML strictly decodes one YAML schema document.
 func UnmarshalSchemaYAML(data []byte) (Schema, error) {
 	var schema Schema
-	if err := yaml.UnmarshalStrict(data, &schema); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&schema); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode v3 YAML: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err != nil {
+			return Schema{}, fmt.Errorf("sshconfig: decode trailing v3 YAML: %w", err)
+		}
+		return Schema{}, fmt.Errorf("sshconfig: multiple YAML documents are not allowed")
 	}
 	if err := schema.Validate(); err != nil {
 		return Schema{}, err
