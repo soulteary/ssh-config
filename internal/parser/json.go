@@ -17,6 +17,8 @@
 package parser
 
 import (
+	"fmt"
+
 	Define "github.com/soulteary/ssh-config/v2/internal/define"
 	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 )
@@ -39,7 +41,15 @@ func ConvertToJSON(input []Define.HostConfig) []byte {
 }
 
 func GroupJSONConfig(input string) []Define.HostConfig {
-	jsonConfig := Fn.GetJSONData(input)
+	hostConfigs, _ := GroupJSONConfigStrict(input)
+	return hostConfigs
+}
+
+func GroupJSONConfigStrict(input string) ([]Define.HostConfig, error) {
+	jsonConfig, err := Fn.GetJSONDataStrict(input)
+	if err != nil {
+		return nil, fmt.Errorf("decode legacy JSON: %w", err)
+	}
 
 	var hostConfigs []Define.HostConfig
 
@@ -55,5 +65,5 @@ func GroupJSONConfig(input string) []Define.HostConfig {
 		hostConfigs = append(hostConfigs, config)
 	}
 
-	return hostConfigs
+	return hostConfigs, nil
 }

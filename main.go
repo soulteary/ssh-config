@@ -78,7 +78,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		userInput = string(content)
 	}
 
-	fileType := Fn.DetectStringType(userInput)
+	fileType, err := Fn.DetectStringTypeStrict(userInput)
+	if err != nil {
+		deps.Println("Error detecting config format:", err)
+		return err
+	}
 	result, err := deps.Process(fileType, userInput, args)
 	if err != nil {
 		deps.Println("Error parsing config:", err)
@@ -124,15 +128,16 @@ func Run(args Cmd.Args, deps Dependencies) error {
 }
 
 func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
+	atomicSave := func(path string, data []byte) error {
+		return sshconfig.SaveAtomic(path, data, sshconfig.SaveOptions{PreserveMode: true})
+	}
 	deps := Dependencies{
-		StdinStat:  os.Stdin.Stat,
-		Exit:       os.Exit,
-		Println:    fmt.Println,
-		GetContent: Fn.GetPathContent,
-		SaveFile:   Fn.Save,
-		SaveLossless: func(path string, data []byte) error {
-			return sshconfig.SaveAtomic(path, data, sshconfig.SaveOptions{PreserveMode: true})
-		},
+		StdinStat:             os.Stdin.Stat,
+		Exit:                  os.Exit,
+		Println:               fmt.Println,
+		GetContent:            Fn.GetPathContent,
+		SaveFile:              atomicSave,
+		SaveLossless:          atomicSave,
 		GetUserInputFromStdin: Fn.GetUserInputFromStdin,
 		GetLosslessStdin:      func() ([]byte, error) { return io.ReadAll(os.Stdin) },
 		WriteOutput: func(data []byte) error {

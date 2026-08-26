@@ -121,7 +121,15 @@ type YAMLHostConfigGroup struct {
 }
 
 func GroupYAMLConfig(input string) []Define.HostConfig {
-	yamlConfig := Fn.GetYamlData(input)
+	hostConfigs, _ := GroupYAMLConfigStrict(input)
+	return hostConfigs
+}
+
+func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
+	yamlConfig, err := Fn.GetYamlDataStrict(input)
+	if err != nil {
+		return nil, fmt.Errorf("decode legacy YAML: %w", err)
+	}
 
 	var hostConfigs []Define.HostConfig
 
@@ -184,5 +192,5 @@ func GroupYAMLConfig(input string) []Define.HostConfig {
 			}
 		}
 	}
-	return hostConfigs
+	return hostConfigs, nil
 }

@@ -25,7 +25,17 @@ import (
 	Define "github.com/soulteary/ssh-config/v2/internal/define"
 	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 	"github.com/soulteary/ssh-config/v2/pkg/lexer"
+	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
 )
+
+var legacySSHDirectives = map[string]struct{}{
+	"hostname": {}, "user": {}, "identityfile": {}, "port": {},
+	"controlpath": {}, "controlpersist": {}, "tcpkeepalive": {},
+	"compression": {}, "forwardagent": {}, "ciphers": {},
+	"hostkeyalgorithms": {}, "kexalgorithms": {},
+	"pubkeyauthentication": {}, "proxycommand": {},
+	"pubkeyacceptedalgorithms": {},
+}
 
 type SSHHostConfigGroup struct {
 	Comments []string
@@ -133,6 +143,9 @@ func groupFromTokens(tokens []lexer.Token) map[string]SSHHostConfigGroup {
 }
 
 func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
+	if err := validateLegacySSHConfig(userInput); err != nil {
+		return nil, err
+	}
 	configs, err := GroupSSHConfigFromString(userInput)
 	if err != nil {
 		return nil, err
@@ -157,6 +170,73 @@ func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
 		})
 	}
 	return hostConfigs, nil
+}
+
+func validateLegacySSHConfig(input string) error {
+	doc, err := sshconfig.Parse([]byte(input))
+	if err != nil {
+		return err
+	}
+	if diagnostics := doc.Diagnostics(); len(diagnostics) > 0 {
+		first := diagnostics[0]
+		return legacyLossError(first.Position.Line, first.Message)
+	}
+
+	hosts := make(map[string]struct{})
+	var directives map[string]struct{}
+	for _, node := range doc.Nodes() {
+		if node.Kind == sshconfig.NodeInvalid {
+			return legacyLossError(nodeLine(node), "malformed directive")
+		}
+		if node.Kind != sshconfig.NodeDirective || node.Directive == nil {
+			continue
+		}
+
+		directive := node.Directive
+		line := directive.Keyword.Position.Line
+		switch directive.KeywordValue {
+		case "host":
+			if len(directive.Arguments) == 0 {
+				return legacyLossError(line, "Host requires at least one pattern")
+			}
+			patterns := make([]string, 0, len(directive.Arguments))
+			for _, argument := range directive.Arguments {
+				patterns = append(patterns, argument.Value)
+			}
+			host := strings.Join(patterns, " ")
+			if _, exists := hosts[host]; exists {
+				return legacyLossError(line, fmt.Sprintf("duplicate Host block %q", host))
+			}
+			hosts[host] = struct{}{}
+			directives = make(map[string]struct{})
+			continue
+		case "match", "include":
+			return legacyLossError(line, fmt.Sprintf("%s cannot be represented", directive.KeywordValue))
+		}
+
+		if directives == nil {
+			return legacyLossError(line, "global directives before the first Host cannot be represented")
+		}
+		if _, supported := legacySSHDirectives[directive.KeywordValue]; !supported {
+			return legacyLossError(line, fmt.Sprintf("directive %q is not supported by the legacy schema", directive.KeywordValue))
+		}
+		if _, repeated := directives[directive.KeywordValue]; repeated {
+			return legacyLossError(line, fmt.Sprintf("repeated directive %q cannot be represented", directive.KeywordValue))
+		}
+		directives[directive.KeywordValue] = struct{}{}
+	}
+	return nil
+}
+
+func legacyLossError(line int, reason string) error {
+	return fmt.Errorf("legacy conversion would lose data at line %d: %s; use -lossless", line, reason)
+}
+
+func nodeLine(node sshconfig.Node) int {
+	if node.Directive != nil {
+		return node.Directive.Keyword.Position.Line
+	}
+	return 1
 }
 
 type SSHHostConfigGrouped struct {
