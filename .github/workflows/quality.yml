@@ -38,6 +38,22 @@ jobs:
       - name: Test with race detector
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
 
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: coverage-${{ github.sha }}
+          path: coverage.out
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload coverage to Codecov
+        continue-on-error: true
+        uses: codecov/codecov-action@04b047e8bb82a0c002c8312c1c880fbc6a999d45 # v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          fail_ci_if_error: false
+
       - name: Vet
         run: go vet ./...
 
@@ -46,11 +62,3 @@ jobs:
 
       - name: Scan dependencies
         run: govulncheck ./...
-
-      - name: Upload coverage artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: coverage-${{ github.sha }}
-          path: coverage.out
-          if-no-files-found: error
-          retention-days: 7
