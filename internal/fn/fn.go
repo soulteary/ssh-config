@@ -28,6 +28,7 @@ import (
 
 	Define "github.com/soulteary/ssh-config/v2/internal/define"
 	"gopkg.in/yaml.v2"
+	yamlv3 "gopkg.in/yaml.v3"
 )
 
 var (
@@ -90,7 +91,7 @@ func GetYamlDataStrict(input string) (yamlConfig Define.YAMLOutput, err error) {
 	if err := validateLegacyYAML(data); err != nil {
 		return yamlConfig, err
 	}
-	err = yaml.Unmarshal(data, &yamlConfig)
+	err = yamlv3.Unmarshal(data, &yamlConfig)
 	return yamlConfig, err
 }
 

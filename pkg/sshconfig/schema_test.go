@@ -305,6 +305,50 @@ func TestMigrateLegacyFormatsRejectCrossLineFields(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyYAMLAllowsMergeOverrides(t *testing.T) {
+	t.Parallel()
+	inputs := []string{
+		"global:\n  <<: &defaults\n    User: alice\n    Port: \"22\"\n  User: bob\n",
+		"global:\n  User: bob\n  <<: &defaults\n    User: alice\n    Port: \"22\"\n",
+	}
+	for _, input := range inputs {
+		schema, err := MigrateLegacyYAML([]byte(input), "config")
+		if err != nil {
+			t.Fatalf("MigrateLegacyYAML() error = %v", err)
+		}
+		doc, err := schema.Document("config")
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := doc.MarshalPreserve()
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, want := range []string{"Port 22", "User bob"} {
+			if !strings.Contains(string(output), want) {
+				t.Fatalf("migrated output missing %q:\n%s", want, output)
+			}
+		}
+	}
+}
+
+func TestMigrateLegacyYAMLRejectsDuplicateMergeOperands(t *testing.T) {
+	t.Parallel()
+	input := []byte("global:\n  <<: {User: alice, User: bob}\n")
+	if _, err := MigrateLegacyYAML(input, "config"); err == nil {
+		t.Fatal("MigrateLegacyYAML() accepted duplicate fields inside a merge operand")
+	}
+}
+
+
+func TestMigrateLegacyYAMLRejectsQuotedMergeKeyAsUnknownField(t *testing.T) {
+	t.Parallel()
+	input := []byte("Group work:\n  \"<<\": {}\n")
+	if _, err := MigrateLegacyYAML(input, "config"); err == nil || !strings.Contains(err.Error(), "unknown YAML field") {
+		t.Fatalf("MigrateLegacyYAML() error = %v, want unknown field error", err)
+	}
+}
+
 func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []byte) {
 	t.Helper()
 	doc, err := schema.Document(path)
