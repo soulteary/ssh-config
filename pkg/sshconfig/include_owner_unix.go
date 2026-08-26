@@ -9,7 +9,14 @@ import (
 	"syscall"
 )
 
-func checkIncludeOwner(info fs.FileInfo, path string) error {
+func openIncludeFile(path string) (*os.File, error) {
+	return os.OpenFile(path, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+}
+
+func checkIncludePlatformPermissions(info fs.FileInfo, path string) error {
+	if info.Mode().Perm()&0022 != 0 {
+		return fmt.Errorf("sshconfig: bad permissions on %s: mode %o is writable by group or others", path, info.Mode().Perm())
+	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
 	if !ok {
 		return fmt.Errorf("sshconfig: inspect owner of included file %s", path)

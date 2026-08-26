@@ -91,7 +91,7 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 	if stack[path] {
 		return fmt.Errorf("sshconfig: recursive include cycle at %s", path)
 	}
-	file, err := os.Open(path)
+	file, err := openIncludeFile(path)
 	if err != nil {
 		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}
@@ -222,8 +222,5 @@ func checkIncludePermissions(file *os.File, path string) error {
 	if !info.Mode().IsRegular() {
 		return fmt.Errorf("sshconfig: included path %s is not a regular file", path)
 	}
-	if info.Mode().Perm()&0022 != 0 {
-		return fmt.Errorf("sshconfig: bad permissions on %s: mode %o is writable by group or others", path, info.Mode().Perm())
-	}
-	return checkIncludeOwner(info, path)
+	return checkIncludePlatformPermissions(info, path)
 }
