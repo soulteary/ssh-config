@@ -19,7 +19,6 @@ package parser
 import (
 	"fmt"
 	"reflect"
-	"slices"
 	"strings"
 
 	Define "github.com/soulteary/ssh-config/v2/internal/define"
@@ -146,15 +145,12 @@ func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
 	if err := validateLegacySSHConfig(userInput); err != nil {
 		return nil, err
 	}
-	configs, err := GroupSSHConfigFromString(userInput)
+	tokens, err := lexer.Lex(userInput)
 	if err != nil {
 		return nil, err
 	}
-	hosts := make([]string, 0, len(configs))
-	for host := range configs {
-		hosts = append(hosts, host)
-	}
-	slices.Sort(hosts)
+	configs := groupFromTokens(tokens)
+	hosts := hostOrderFromTokens(tokens)
 
 	hostConfigs := make([]Define.HostConfig, 0, len(hosts))
 	for _, host := range hosts {
@@ -170,6 +166,29 @@ func GroupSSHConfig(userInput string) ([]Define.HostConfig, error) {
 		})
 	}
 	return hostConfigs, nil
+}
+
+func hostOrderFromTokens(tokens []lexer.Token) []string {
+	hosts := make([]string, 0)
+	for index := 0; index < len(tokens); index++ {
+		token := tokens[index]
+		if token.Kind != lexer.TokenKeyword || !strings.EqualFold(token.Value, "host") {
+			continue
+		}
+		parts := make([]string, 0)
+		for index+1 < len(tokens) {
+			next := tokens[index+1]
+			if next.Kind != lexer.TokenValue && next.Kind != lexer.TokenQuoted {
+				break
+			}
+			index++
+			parts = append(parts, next.Value)
+		}
+		if host := strings.TrimSpace(strings.Join(parts, " ")); host != "" {
+			hosts = append(hosts, host)
+		}
+	}
+	return hosts
 }
 
 func validateLegacySSHConfig(input string) error {
