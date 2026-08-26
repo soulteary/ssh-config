@@ -1,0 +1,158 @@
+package sshconfig
+
+import (
+	"bytes"
+	"strings"
+	"testing"
+)
+
+func TestSchemaJSONAndYAMLRoundTrip(t *testing.T) {
+	t.Parallel()
+	input := []byte("# note\r\nHost=example\r\n\tIdentityFile first\r\n\tIdentityFile second # backup\r\n")
+	doc, _ := Parse(input)
+	schemaDocument, err := doc.ToSchema("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := NewSchema(schemaDocument)
+
+	jsonData, err := MarshalSchemaJSON(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromJSON, err := UnmarshalSchemaJSON(jsonData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSchemaDocumentBytes(t, fromJSON, "config", input)
+
+	yamlData, err := MarshalSchemaYAML(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromYAML, err := UnmarshalSchemaYAML(yamlData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSchemaDocumentBytes(t, fromYAML, "config", input)
+}
+
+func TestSchemaPreservesNonUTF8RawBytes(t *testing.T) {
+	t.Parallel()
+	input := []byte{'#', ' ', 0xff, '\n'}
+	doc, _ := Parse(input)
+	schemaDocument, err := doc.ToSchema("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := NewSchema(schemaDocument)
+	data, err := MarshalSchemaJSON(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	decoded, err := UnmarshalSchemaJSON(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSchemaDocumentBytes(t, decoded, "config", input)
+}
+
+func TestSchemaRendersOnlyChangedDirective(t *testing.T) {
+	t.Parallel()
+	input := []byte("# untouched\r\n\tUser = old # account\r\nHost example\r\n")
+	doc, _ := Parse(input)
+	schemaDocument, _ := doc.ToSchema("config")
+	schemaDocument.Nodes[1].Directive.Arguments = []string{"new user"}
+	reconstructed, err := schemaDocument.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := reconstructed.MarshalPreserve()
+	want := []byte("# untouched\r\nUser \"new user\" # account\r\nHost example\r\n")
+	if !bytes.Equal(got, want) {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestSchemaStrictValidation(t *testing.T) {
+	t.Parallel()
+	if _, err := UnmarshalSchemaJSON([]byte(`{"schemaVersion":3,"documents":[],"extra":true}`)); err == nil {
+		t.Fatal("JSON accepted an unknown field")
+	}
+	if _, err := UnmarshalSchemaYAML([]byte("schemaVersion: 3\ndocuments: []\nextra: true\n")); err == nil {
+		t.Fatal("YAML accepted an unknown field")
+	}
+	badVersion := Schema{SchemaVersion: 2, Documents: []SchemaDocument{{}}}
+	if err := badVersion.Validate(); err == nil {
+		t.Fatal("schema accepted an old version")
+	}
+	badBase64 := NewSchema(SchemaDocument{Nodes: []SchemaNode{{Type: "comment", RawBase64: "!"}}})
+	if err := badBase64.Validate(); err == nil {
+		t.Fatal("schema accepted invalid base64")
+	}
+	wrongNodeShape := NewSchema(SchemaDocument{Nodes: []SchemaNode{{
+		Type:      "comment",
+		Directive: &SchemaDirective{Keyword: "Host"},
+	}}})
+	if err := wrongNodeShape.Validate(); err == nil {
+		t.Fatal("schema accepted a directive view on a comment node")
+	}
+}
+
+func TestMigrateLegacyFormats(t *testing.T) {
+	t.Parallel()
+	legacyYAML := []byte(`global:
+  ServerAliveInterval: "30"
+Group production:
+  Prefix: corp-
+  Common:
+    User: deploy
+  Hosts:
+    api:
+      Notes: main API
+      config:
+        HostName: api.example
+`)
+	schema, err := MigrateLegacyYAML(legacyYAML, "config")
+	if err != nil {
+		t.Fatalf("MigrateLegacyYAML() error = %v", err)
+	}
+	doc, err := schema.Document("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	yamlOutput, _ := doc.MarshalPreserve()
+	for _, expected := range []string{"Host *", "ServerAliveInterval 30", "Host corp-api", "User deploy", "HostName api.example"} {
+		if !strings.Contains(string(yamlOutput), expected) {
+			t.Errorf("migrated YAML output missing %q:\n%s", expected, yamlOutput)
+		}
+	}
+
+	legacyJSON := []byte(`[{"Name":"example","Notes":"note","Data":{"User":"root","IdentityFile":"~/.ssh/id"}}]`)
+	schema, err = MigrateLegacyJSON(legacyJSON, "config")
+	if err != nil {
+		t.Fatalf("MigrateLegacyJSON() error = %v", err)
+	}
+	doc, _ = schema.Document("config")
+	jsonOutput, _ := doc.MarshalPreserve()
+	for _, expected := range []string{"# note", "Host example", "IdentityFile ~/.ssh/id", "User root"} {
+		if !strings.Contains(string(jsonOutput), expected) {
+			t.Errorf("migrated JSON output missing %q:\n%s", expected, jsonOutput)
+		}
+	}
+}
+
+func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []byte) {
+	t.Helper()
+	doc, err := schema.Document(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("schema round trip mismatch\n got: %q\nwant: %q", got, want)
+	}
+}
