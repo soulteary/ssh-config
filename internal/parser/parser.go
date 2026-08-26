@@ -33,9 +33,17 @@ func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
 
 	switch strings.ToUpper(fileType) {
 	case "YAML":
-		hostConfigs = GroupYAMLConfig(userInput)
+		var err error
+		hostConfigs, err = GroupYAMLConfigStrict(userInput)
+		if err != nil {
+			return nil, err
+		}
 	case "JSON":
-		hostConfigs = GroupJSONConfig(userInput)
+		var err error
+		hostConfigs, err = GroupJSONConfigStrict(userInput)
+		if err != nil {
+			return nil, err
+		}
 	case "TEXT":
 		var err error
 		hostConfigs, err = GroupSSHConfig(userInput)

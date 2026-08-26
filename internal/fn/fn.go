@@ -75,12 +75,18 @@ func GetYamlBytes(data any) []byte {
 }
 
 func GetYamlData(input string) (yamlConfig Define.YAMLOutput) {
-	err := yaml.Unmarshal([]byte(input), &yamlConfig)
+	yamlConfig, err := GetYamlDataStrict(input)
 	if err != nil {
 		fmt.Println("Error unmarshalling YAML:", err)
-		return yamlConfig
 	}
 	return yamlConfig
+}
+
+// GetYamlDataStrict decodes the legacy YAML format without hiding syntax or
+// type errors from callers that must avoid destructive conversions.
+func GetYamlDataStrict(input string) (yamlConfig Define.YAMLOutput, err error) {
+	err = yaml.Unmarshal([]byte(input), &yamlConfig)
+	return yamlConfig, err
 }
 
 func GetJSONBytes(data any) []byte {
@@ -93,12 +99,17 @@ func GetJSONBytes(data any) []byte {
 }
 
 func GetJSONData(input string) (jsonConfig []Define.HostConfigForJSON) {
-	err := json.Unmarshal([]byte(input), &jsonConfig)
+	jsonConfig, err := GetJSONDataStrict(input)
 	if err != nil {
 		fmt.Println("Error unmarshalling JSON:", err)
-		return jsonConfig
 	}
 	return jsonConfig
+}
+
+// GetJSONDataStrict decodes the legacy JSON format without hiding errors.
+func GetJSONDataStrict(input string) (jsonConfig []Define.HostConfigForJSON, err error) {
+	err = json.Unmarshal([]byte(input), &jsonConfig)
+	return jsonConfig, err
 }
 
 func DetectStringType(input string) string {
@@ -118,6 +129,48 @@ func DetectStringType(input string) string {
 		return "YAML"
 	}
 	return "TEXT"
+}
+
+// DetectStringTypeStrict preserves the legacy auto-detection behavior for
+// valid input, but treats text that clearly starts as a structured document as
+// malformed structured input instead of falling back to SSH text.
+func DetectStringTypeStrict(input string) (string, error) {
+	trimmedInput := strings.TrimSpace(input)
+	if trimmedInput == "" {
+		return "TEXT", nil
+	}
+
+	if strings.HasPrefix(trimmedInput, "{") || strings.HasPrefix(trimmedInput, "[") {
+		var value []Define.HostConfigForJSON
+		if err := json.Unmarshal([]byte(trimmedInput), &value); err != nil {
+			return "", fmt.Errorf("invalid JSON input: %w", err)
+		}
+		return "JSON", nil
+	}
+
+	if looksLikeLegacyYAML(trimmedInput) {
+		var value Define.YAMLOutput
+		if err := yaml.Unmarshal([]byte(trimmedInput), &value); err != nil {
+			return "", fmt.Errorf("invalid YAML input: %w", err)
+		}
+		return "YAML", nil
+	}
+
+	return DetectStringType(input), nil
+}
+
+func looksLikeLegacyYAML(input string) bool {
+	for _, line := range strings.Split(input, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") || line == "---" {
+			continue
+		}
+		lower := strings.ToLower(line)
+		return strings.HasPrefix(lower, "global:") ||
+			strings.HasPrefix(lower, "default:") ||
+			(strings.HasPrefix(lower, "group ") && strings.Contains(line, ":"))
+	}
+	return false
 }
 
 func GetPathContent(src string) ([]byte, error) {
