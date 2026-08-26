@@ -60,3 +60,24 @@ func TestProcessLosslessRejectsInvalidStructuredInput(t *testing.T) {
 		t.Fatal("invalid structured input was accepted")
 	}
 }
+
+func TestProcessLosslessDetectsReorderedV3YAML(t *testing.T) {
+	t.Parallel()
+	input := `documents:
+- path: ""
+  nodes:
+  - type: directive
+    directive:
+      keyword: Host
+      arguments:
+      - example
+schemaVersion: 3
+`
+	got, err := Parser.Process("TEXT", input, Cmd.Args{ToSSH: true, Lossless: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "Host example\n" {
+		t.Fatalf("reordered v3 YAML output = %q", got)
+	}
+}
