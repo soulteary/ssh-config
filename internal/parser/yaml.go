@@ -163,6 +163,9 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 				hostConfig := originConfig
 				hostConfig.Name = hostName
 				hostConfig.Extra.Prefix = prefix
+				if hostConfig.Config == nil && (len(groupConfig.Common) > 0 || len(yamlConfig.Default) > 0) {
+					hostConfig.Config = make(map[string]string)
+				}
 				if hostConfig.Config != nil {
 					if groupConfig.Common != nil {
 						for key, value := range groupConfig.Common {
