@@ -120,6 +120,22 @@ func TestResolveIncludesPermissionCheck(t *testing.T) {
 	}
 }
 
+func TestResolveIncludesPermissionCheckReadsTheOpenedFile(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	entry := filepath.Join(directory, "config")
+	writeTestConfig(t, entry, "Host example\n")
+
+	file, err := os.Open(entry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	if err := checkIncludePermissions(file, entry); err != nil {
+		t.Fatalf("checkIncludePermissions() error = %v", err)
+	}
+}
+
 func TestResolveIncludesExpansionErrors(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
