@@ -65,5 +65,8 @@ func GroupJSONConfigStrict(input string) ([]Define.HostConfig, error) {
 		hostConfigs = append(hostConfigs, config)
 	}
 
+	if err := validateLegacyHostConfigs(hostConfigs); err != nil {
+		return nil, err
+	}
 	return hostConfigs, nil
 }

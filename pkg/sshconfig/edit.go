@@ -13,7 +13,7 @@ func (d *Document) ReplaceDirective(id NodeID, keyword string, arguments ...stri
 	if d == nil {
 		return fmt.Errorf("sshconfig: nil document")
 	}
-	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+	if err := ValidateDirectiveInput(keyword, arguments, ""); err != nil {
 		return err
 	}
 	index := d.nodeIndex(id)
@@ -50,7 +50,7 @@ func (d *Document) InsertDirectiveAfter(after NodeID, keyword string, arguments 
 	if d == nil {
 		return 0, fmt.Errorf("sshconfig: nil document")
 	}
-	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+	if err := ValidateDirectiveInput(keyword, arguments, ""); err != nil {
 		return 0, err
 	}
 	index := d.nodeIndex(after)
@@ -76,7 +76,7 @@ func (d *Document) AppendDirective(keyword string, arguments ...string) (NodeID,
 	if d == nil {
 		return 0, fmt.Errorf("sshconfig: nil document")
 	}
-	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+	if err := ValidateDirectiveInput(keyword, arguments, ""); err != nil {
 		return 0, err
 	}
 	raw := d.renderNewDirective(keyword, arguments)
@@ -187,7 +187,8 @@ func syntheticDirective(keyword string, arguments []string) *Directive {
 	}
 }
 
-func validateDirectiveInput(keyword string, arguments []string, comment string) error {
+// ValidateDirectiveInput rejects fields that could escape their directive line.
+func ValidateDirectiveInput(keyword string, arguments []string, comment string) error {
 	if keyword == "" {
 		return fmt.Errorf("sshconfig: directive keyword is empty")
 	}

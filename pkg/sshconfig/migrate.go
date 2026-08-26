@@ -38,7 +38,9 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
 	}
 	var output bytes.Buffer
-	writeLegacyHost(&output, "*", "", legacy.Global)
+	if err := writeLegacyHost(&output, "*", "", legacy.Global); err != nil {
+		return Schema{}, err
+	}
 	groupNames := sortedMapKeys(legacy.Groups)
 	for _, groupName := range groupNames {
 		group := legacy.Groups[groupName]
@@ -51,7 +53,9 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 			}
 			mergeMissing(config, group.Common)
 			mergeMissing(config, legacy.Default)
-			writeLegacyHost(&output, group.Prefix+hostName, host.Notes, config)
+			if err := writeLegacyHost(&output, group.Prefix+hostName, host.Notes, config); err != nil {
+				return Schema{}, err
+			}
 		}
 	}
 	return schemaFromLegacyBytes(output.Bytes(), path)
@@ -70,7 +74,9 @@ func MigrateLegacyJSON(data []byte, path string) (Schema, error) {
 	}
 	var output bytes.Buffer
 	for _, host := range hosts {
-		writeLegacyHost(&output, host.Name, host.Notes, host.Data)
+		if err := writeLegacyHost(&output, host.Name, host.Notes, host.Data); err != nil {
+			return Schema{}, err
+		}
 	}
 	return schemaFromLegacyBytes(output.Bytes(), path)
 }
@@ -87,9 +93,22 @@ func schemaFromLegacyBytes(data []byte, path string) (Schema, error) {
 	return NewSchema(schemaDocument), nil
 }
 
-func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string]string) {
+func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string]string) error {
 	if name == "" || len(config) == 0 {
-		return
+		return nil
+	}
+	if err := ValidateDirectiveInput("Host", []string{name}, ""); err != nil {
+		return fmt.Errorf("sshconfig: invalid legacy host %q: %w", name, err)
+	}
+	for _, note := range strings.Split(notes, "\n") {
+		if err := ValidateDirectiveInput("Host", nil, note); err != nil {
+			return fmt.Errorf("sshconfig: invalid legacy note: %w", err)
+		}
+	}
+	for key, value := range config {
+		if err := ValidateDirectiveInput(key, []string{value}, ""); err != nil {
+			return fmt.Errorf("sshconfig: invalid legacy directive %q: %w", key, err)
+		}
 	}
 	for _, note := range strings.Split(notes, "\n") {
 		if note != "" {
@@ -108,6 +127,7 @@ func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string
 		output.WriteString(quoteArgument(config[key]))
 		output.WriteByte('\n')
 	}
+	return nil
 }
 
 func sortedMapKeys[V any](values map[string]V) []string {
