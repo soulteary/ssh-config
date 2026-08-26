@@ -2,6 +2,7 @@ package sshconfig
 
 import (
 	"bytes"
+	"encoding/base64"
 	"strings"
 	"testing"
 )
@@ -152,6 +153,33 @@ func TestSchemaNewDirectiveDefaultsToLF(t *testing.T) {
 	got, _ := doc.MarshalPreserve()
 	if want := []byte("Host example\n"); !bytes.Equal(got, want) {
 		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestSchemaValidationRejectsRawNodeShapeMismatches(t *testing.T) {
+	t.Parallel()
+	encode := func(raw string) string {
+		return base64.StdEncoding.EncodeToString([]byte(raw))
+	}
+	tests := []struct {
+		name string
+		node SchemaNode
+		want string
+	}{
+		{name: "declared comment", node: SchemaNode{Type: "comment", RawBase64: encode("Host example\n")}, want: "directive node, not comment"},
+		{name: "declared blank", node: SchemaNode{Type: "blank", RawBase64: encode("User root\n")}, want: "directive node, not blank"},
+		{name: "declared invalid", node: SchemaNode{Type: "invalid", RawBase64: encode("# comment\n")}, want: "comment node, not invalid"},
+		{name: "multiple lines", node: SchemaNode{Type: "comment", RawBase64: encode("# cover\nProxyCommand command\n")}, want: "2 physical lines"},
+		{name: "empty comment", node: SchemaNode{Type: "comment"}, want: "comment node has no raw bytes"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			schema := NewSchema(SchemaDocument{Nodes: []SchemaNode{test.node}})
+			err := schema.Validate()
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Validate() error = %v, want substring %q", err, test.want)
+			}
+		})
 	}
 }
 
