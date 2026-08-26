@@ -85,6 +85,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 - `-dest`: Specify the path to save the configuration file. When omitted, the converted result is written to standard output.
 - `-lossless`: Use the lossless parser and v3 YAML/JSON schema. This mode accepts one source file or stdin and writes destination files atomically.
 - `-help`: View program command-line help
+- `-version`: Print release, commit, build, and tree-state metadata
 
 ### Examples
 
@@ -122,6 +123,8 @@ ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 
 The previous YAML/JSON formats remain the default for compatibility. Lossless mode can import them, but ordering and repeated values already discarded by a legacy map cannot be reconstructed.
 
+See the [lossless schema v3 specification](./docs/lossless-schema-v3.md) for node shapes, byte-preservation rules, editing behavior, API examples, and migration limits.
+
 ## Development
 
 ### Dependencies
@@ -143,6 +146,8 @@ go test -v ./... -covermode=atomic -coverprofile=coverage.out && go tool cover -
 ## Contributing
 
 Issues and pull requests are welcome.
+
+Please report vulnerabilities through the private process in [SECURITY.md](./SECURITY.md), not through a public issue.
 
 ## License
 

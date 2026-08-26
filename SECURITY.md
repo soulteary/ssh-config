@@ -1,25 +1,41 @@
-# Security Policy
+# Security policy
 
-## Supported Versions
+## Supported versions
 
-We welcome and support security vulnerability feedback for all versions of our project.
+| Version | Supported |
+| --- | --- |
+| Current `2.x` release and `main` | Yes |
+| Releases before `2.0.0` | No |
 
-| Version | Supported          |
-| ------- | ------------------ |
-| All versions | :white_check_mark: |
+Schema version `3` is a data-format version, not an application major version.
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
-We take the security of our project very seriously and welcome all types of security vulnerability feedback. If you discover any security issues, please report them using the following steps:
+Please report suspected vulnerabilities through a
+[private GitHub security advisory](https://github.com/soulteary/ssh-config/security/advisories/new).
+Do not open a public issue for an unpatched vulnerability.
 
-1. Go to the Issues page of our GitHub repository
-2. Click on "New issue" to create a new issue
-3. In the issue, provide a detailed description of the security vulnerability you've found, including:
-   - A detailed description of the vulnerability
-   - Steps to reproduce (if applicable)
-   - Affected versions
-   - Any other relevant information
+Include enough information to reproduce and assess the problem:
 
-Our team will review your submitted issue as soon as possible and may contact you for additional information if necessary.
+- affected release or commit;
+- operating system and architecture;
+- minimal configuration input and command line;
+- observed and expected behavior;
+- security impact and any known preconditions;
+- proof-of-concept code or logs with credentials, hostnames, keys, and tokens
+  removed.
 
-Thank you for your contribution to ensuring the security of our project!
+Relevant reports include unintended configuration loss or mutation, unsafe
+destination-file replacement, symbolic-link or path handling flaws, unexpected
+file access through `Include`, command execution, and parser resource-exhaustion
+issues.
+
+The maintainers will coordinate disclosure and remediation in the private
+advisory. Publish details only after a fixed release is available or the
+maintainers agree on a disclosure date.
+
+## Safe testing
+
+Use synthetic configuration files and accounts you control. Never include
+private keys, authentication agents, production hostnames, tokens, or other
+secrets in a report. Do not test against infrastructure without authorization.

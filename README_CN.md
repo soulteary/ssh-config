@@ -78,6 +78,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 - `-dest`: 指定要保存的配置文件路径
 - `-lossless`: 使用无损解析器和 v3 YAML/JSON 格式。此模式接受单个源文件或标准输入，并以原子方式写入目标文件。
 - `-help`: 查看程序命令行帮助
+- `-version`: 输出发布版本、提交、构建时间和工作树状态
 
 ### 示例
 
@@ -109,6 +110,8 @@ ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 
 为保持兼容，默认仍使用原有 YAML/JSON 格式。无损模式能够导入旧格式，但无法恢复已经被旧 map 结构丢弃的顺序和重复值。
 
+字段结构、字节保持规则、编辑行为、Go API 示例和旧格式迁移边界详见 [v3 无损格式规范](./docs/lossless-schema-v3.md)。
+
 ## 开发
 
 ### 依赖
@@ -130,6 +133,8 @@ go test -v ./... -covermode=atomic -coverprofile=coverage.out && go tool cover -
 ## 贡献
 
 欢迎提交 issues 和 pull requests。
+
+安全漏洞请按照 [SECURITY.md](./SECURITY.md) 中的私密流程报告，不要直接提交公开 issue。
 
 ## 许可证
 
