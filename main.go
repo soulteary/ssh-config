@@ -28,10 +28,19 @@ import (
 	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
 )
 
+var (
+	version   = "dev"
+	commit    = "none"
+	date      = "unknown"
+	builtBy   = "unknown"
+	treeState = "unknown"
+)
+
 type Dependencies struct {
 	StdinStat             func() (os.FileInfo, error)
 	Exit                  func(int)
 	Println               func(...interface{}) (n int, err error)
+	PrintErr              func(...interface{}) (n int, err error)
 	GetContent            func(string) ([]byte, error)
 	SaveFile              func(string, []byte) error
 	SaveLossless          func(string, []byte) error
@@ -46,7 +55,7 @@ type Dependencies struct {
 func Run(args Cmd.Args, deps Dependencies) error {
 	isValid, notValidReason := Cmd.CheckConvertArgvValid(args)
 	if !isValid {
-		deps.Println(notValidReason)
+		deps.errorln(notValidReason)
 		return fmt.Errorf("%s", notValidReason)
 	}
 
@@ -56,7 +65,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		if args.Lossless && deps.GetLosslessStdin != nil {
 			input, err := deps.GetLosslessStdin()
 			if err != nil {
-				deps.Println("Error reading stdin:", err)
+				deps.errorln("Error reading stdin:", err)
 				return err
 			}
 			userInput = string(input)
@@ -66,13 +75,13 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	} else {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
 		if !isValid {
-			deps.Println(notValidReason)
+			deps.errorln(notValidReason)
 			return fmt.Errorf("%s", notValidReason)
 		}
 
 		content, err := deps.GetContent(args.Src)
 		if err != nil {
-			deps.Println("Error reading file:", err)
+			deps.errorln("Error reading file:", err)
 			return err
 		}
 		userInput = string(content)
@@ -80,19 +89,19 @@ func Run(args Cmd.Args, deps Dependencies) error {
 
 	fileType, err := Fn.DetectStringTypeStrict(userInput)
 	if err != nil {
-		deps.Println("Error detecting config format:", err)
+		deps.errorln("Error detecting config format:", err)
 		return err
 	}
 	result, err := deps.Process(fileType, userInput, args)
 	if err != nil {
-		deps.Println("Error parsing config:", err)
+		deps.errorln("Error parsing config:", err)
 		return err
 	}
 
 	if pipeMode {
 		if args.Lossless && deps.WriteOutput != nil {
 			if err := deps.WriteOutput(result); err != nil {
-				deps.Println("Error writing output:", err)
+				deps.errorln("Error writing output:", err)
 				return err
 			}
 		} else {
@@ -102,7 +111,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		if args.Dest == "" {
 			if args.Lossless && deps.WriteOutput != nil {
 				if err := deps.WriteOutput(result); err != nil {
-					deps.Println("Error writing output:", err)
+					deps.errorln("Error writing output:", err)
 					return err
 				}
 			} else {
@@ -117,7 +126,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		}
 		err := save(args.Dest, result)
 		if err != nil {
-			deps.Println("Error saving file:", err)
+			deps.errorln("Error saving file:", err)
 			return err
 		}
 		deps.Println("File has been saved successfully")
@@ -127,14 +136,31 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	return nil
 }
 
+func (deps Dependencies) errorln(values ...interface{}) {
+	if deps.PrintErr != nil {
+		_, _ = deps.PrintErr(values...)
+		return
+	}
+	if deps.Println != nil {
+		_, _ = deps.Println(values...)
+	}
+}
+
+func versionText() string {
+	return fmt.Sprintf("ssh-config %s (commit %s, built %s by %s, tree state %s)\n", version, commit, date, builtBy, treeState)
+}
+
 func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 	atomicSave := func(path string, data []byte) error {
 		return sshconfig.SaveAtomic(path, data, sshconfig.SaveOptions{PreserveMode: true})
 	}
 	deps := Dependencies{
-		StdinStat:             os.Stdin.Stat,
-		Exit:                  os.Exit,
-		Println:               fmt.Println,
+		StdinStat: os.Stdin.Stat,
+		Exit:      os.Exit,
+		Println:   fmt.Println,
+		PrintErr: func(values ...interface{}) (int, error) {
+			return fmt.Fprintln(os.Stderr, values...)
+		},
 		GetContent:            Fn.GetPathContent,
 		SaveFile:              atomicSave,
 		SaveLossless:          atomicSave,
@@ -148,13 +174,22 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		CheckUseStdin: func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
 	}
 	args := Cmd.ParseArgs()
+	if args.ShowHelp {
+		fmt.Print(Cmd.Usage)
+		return
+	}
+	if args.Version {
+		fmt.Print(versionText())
+		return
+	}
 
 	// default src to ~/.ssh
 	if args.Src == "" {
 		homeDir, err := userHomeDir()
 		if err != nil {
-			fmt.Println("Error: getting user home directory:", err)
+			fmt.Fprintln(os.Stderr, "Error: getting user home directory:", err)
 			exit(1)
+			return
 		}
 		args.Src = filepath.Join(homeDir, ".ssh")
 	}

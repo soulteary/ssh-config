@@ -26,6 +26,7 @@ const Usage = `Usage:
   ssh-config -lossless -to-ssh -src <v3 YAML or JSON file>
   ssh-config -src <source file or directories path> -dest <destination file path>
   ssh-config -help
+  ssh-config -version
 `
 
 func ShowHelp() {

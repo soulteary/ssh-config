@@ -38,6 +38,7 @@ type Args struct {
 	Src      string
 	Dest     string
 	ShowHelp bool
+	Version  bool
 }
 
 const (
@@ -48,6 +49,7 @@ const (
 	DEFAULT_SRC      = ""
 	DEFAULT_DEST     = ""
 	DEFAULT_HELP     = false
+	DEFAULT_VERSION  = false
 )
 
 func initFlags() {
@@ -58,6 +60,7 @@ func initFlags() {
 	flag.StringVar(&args.Src, "src", DEFAULT_SRC, "Source file or directories path, valid when using non-pipeline mode")
 	flag.StringVar(&args.Dest, "dest", DEFAULT_DEST, "Destination file path, valid when using non-pipeline mode")
 	flag.BoolVar(&args.ShowHelp, "help", DEFAULT_HELP, "Show help")
+	flag.BoolVar(&args.Version, "version", DEFAULT_VERSION, "Show version")
 }
 
 func ParseArgs() Args {
@@ -78,6 +81,7 @@ func ResetFlags() {
 		Src:      DEFAULT_SRC,
 		Dest:     DEFAULT_DEST,
 		ShowHelp: DEFAULT_HELP,
+		Version:  DEFAULT_VERSION,
 	} // Reset the args
 	once = sync.Once{} // Reset the once
 }
@@ -85,7 +89,7 @@ func ResetFlags() {
 func CheckUseStdin(osStdinStat func() (fs.FileInfo, error)) bool {
 	fi, err := osStdinStat()
 	if err != nil {
-		fmt.Println("Error getting stdin stat:", err)
+		fmt.Fprintln(os.Stderr, "Error getting stdin stat:", err)
 		return false
 	}
 	if (fi.Mode() & os.ModeCharDevice) == 0 {

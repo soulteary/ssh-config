@@ -261,11 +261,12 @@ func TestParseArgs(t *testing.T) {
 				Src:      Cmd.DEFAULT_SRC,
 				Dest:     Cmd.DEFAULT_DEST,
 				ShowHelp: Cmd.DEFAULT_HELP,
+				Version:  Cmd.DEFAULT_VERSION,
 			},
 		},
 		{
 			name: "Set all flags",
-			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-lossless", "-src", "source.txt", "-dest", "destination.txt", "-help"},
+			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-lossless", "-src", "source.txt", "-dest", "destination.txt", "-help", "-version"},
 			expected: Cmd.Args{
 				ToYAML:   true,
 				ToSSH:    true,
@@ -274,6 +275,7 @@ func TestParseArgs(t *testing.T) {
 				Src:      "source.txt",
 				Dest:     "destination.txt",
 				ShowHelp: true,
+				Version:  true,
 			},
 		},
 		{
