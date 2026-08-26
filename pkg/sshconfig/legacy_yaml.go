@@ -250,5 +250,5 @@ func dereferenceLegacyYAMLAlias(node *yaml.Node) *yaml.Node {
 }
 
 func isLegacyYAMLMergeKey(node *yaml.Node) bool {
-	return node != nil && (node.Tag == "!!merge" || node.Value == "<<")
+	return node != nil && node.Tag == "!!merge"
 }
