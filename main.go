@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -45,7 +44,7 @@ type Dependencies struct {
 	SaveFile              func(string, []byte) error
 	SaveLossless          func(string, []byte) error
 	GetUserInputFromStdin func() string
-	GetLosslessStdin      func() ([]byte, error)
+	ReadStdin             func() ([]byte, error)
 	WriteOutput           func([]byte) error
 	Process               func(string, string, Cmd.Args) ([]byte, error)
 	CheckUseStdin         func() bool
@@ -62,8 +61,8 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	pipeMode := deps.CheckUseStdin()
 	var userInput string
 	if pipeMode {
-		if args.Lossless && deps.GetLosslessStdin != nil {
-			input, err := deps.GetLosslessStdin()
+		if deps.ReadStdin != nil {
+			input, err := deps.ReadStdin()
 			if err != nil {
 				deps.errorln("Error reading stdin:", err)
 				return err
@@ -169,7 +168,7 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		SaveFile:              atomicSave,
 		SaveLossless:          atomicSave,
 		GetUserInputFromStdin: Fn.GetUserInputFromStdin,
-		GetLosslessStdin:      func() ([]byte, error) { return io.ReadAll(os.Stdin) },
+		ReadStdin:             Fn.ReadUserInputFromStdin,
 		WriteOutput: func(data []byte) error {
 			_, err := os.Stdout.Write(data)
 			return err

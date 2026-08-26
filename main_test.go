@@ -219,7 +219,7 @@ func TestRunLosslessPipePreservesInputAndOutputBytes(t *testing.T) {
 			t.Fatal("line-oriented stdin reader called")
 			return ""
 		},
-		GetLosslessStdin: func() ([]byte, error) { return input, nil },
+		ReadStdin: func() ([]byte, error) { return input, nil },
 		Process: func(_ string, got string, _ Cmd.Args) ([]byte, error) {
 			if !bytes.Equal([]byte(got), input) {
 				t.Fatalf("processor input = %q, want %q", got, input)
@@ -259,7 +259,7 @@ func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
 			err = Run(Cmd.Args{ToSSH: true, Lossless: true}, Dependencies{
 				Println:               func(...interface{}) (int, error) { return 0, nil },
 				CheckUseStdin:         func() bool { return true },
-				GetLosslessStdin:      func() ([]byte, error) { return structured, nil },
+				ReadStdin:             func() ([]byte, error) { return structured, nil },
 				GetUserInputFromStdin: func() string { t.Fatal("legacy stdin reader called"); return "" },
 				Process:               Parser.Process,
 				WriteOutput: func(data []byte) error {
@@ -274,6 +274,18 @@ func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
 				t.Fatalf("round trip mismatch\n got: %q\nwant: %q", output, original)
 			}
 		})
+	}
+}
+
+func TestRunReportsStdinReadErrorsInLegacyMode(t *testing.T) {
+	wantErr := errors.New("stdin failed")
+	err := Run(Cmd.Args{ToYAML: true}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return true },
+		ReadStdin:     func() ([]byte, error) { return nil, wantErr },
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Run() error = %v, want %v", err, wantErr)
 	}
 }
 

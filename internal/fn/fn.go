@@ -17,7 +17,6 @@
 package fn
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -39,13 +38,14 @@ var (
 )
 
 func GetUserInputFromStdin() string {
-	var lines []string
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-	input := strings.Join(lines, "\n")
-	return input
+	input, _ := ReadUserInputFromStdin()
+	return string(input)
+}
+
+// ReadUserInputFromStdin reads standard input without Scanner's token-size
+// limit and returns any underlying read error to the caller.
+func ReadUserInputFromStdin() ([]byte, error) {
+	return io.ReadAll(os.Stdin)
 }
 
 type OrderedMap struct {

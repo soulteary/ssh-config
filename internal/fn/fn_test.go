@@ -55,6 +55,11 @@ func TestGetUserInputFromStdin(t *testing.T) {
 			input:    "",
 			expected: "",
 		},
+		{
+			name:     "Line larger than Scanner limit",
+			input:    "Host " + strings.Repeat("a", 70*1024),
+			expected: "Host " + strings.Repeat("a", 70*1024),
+		},
 	}
 
 	for _, tt := range tests {
