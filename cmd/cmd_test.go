@@ -125,7 +125,7 @@ func TestCheckIOArgvValid(t *testing.T) {
 		},
 		{
 			name:       "Valid directory to non-existent directory",
-			args:       Cmd.Args{Src: testDir, Dest: filepath.Join(tempDir, "newdir")},
+			args:       Cmd.Args{Src: testDir, Dest: filepath.Join(tempDir, "newdir"), Legacy: true},
 			wantResult: true,
 			wantDesc:   "",
 		},
@@ -154,10 +154,16 @@ func TestCheckIOArgvValid(t *testing.T) {
 			wantDesc:   "",
 		},
 		{
-			name:       "Lossless mode rejects a source directory",
-			args:       Cmd.Args{Src: testDir, Lossless: true},
+			name:       "Default lossless mode rejects a source directory",
+			args:       Cmd.Args{Src: testDir},
 			wantResult: false,
-			wantDesc:   "Lossless mode requires a single source file or standard input",
+			wantDesc:   "Lossless conversion requires a single source file or standard input; use -legacy to scan a directory",
+		},
+		{
+			name:       "Legacy mode accepts a source directory",
+			args:       Cmd.Args{Src: testDir, Legacy: true},
+			wantResult: true,
+			wantDesc:   "",
 		},
 	}
 
@@ -266,12 +272,12 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "Set all flags",
-			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-lossless", "-src", "source.txt", "-dest", "destination.txt", "-help", "-version"},
+			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-legacy", "-src", "source.txt", "-dest", "destination.txt", "-help", "-version"},
 			expected: Cmd.Args{
 				ToYAML:   true,
 				ToSSH:    true,
 				ToJSON:   true,
-				Lossless: true,
+				Legacy:   true,
 				Src:      "source.txt",
 				Dest:     "destination.txt",
 				ShowHelp: true,
@@ -360,7 +366,7 @@ func TestResetFlags(t *testing.T) {
 	if result.ToYAML != expected.ToYAML {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
-	if result.Lossless != expected.Lossless {
+	if result.Legacy != expected.Legacy {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 }

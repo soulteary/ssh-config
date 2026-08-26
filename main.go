@@ -87,7 +87,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	}
 
 	fileType := Fn.DetectStringType(userInput)
-	if !args.Lossless {
+	if args.Legacy {
 		var err error
 		fileType, err = Fn.DetectStringTypeStrict(userInput)
 		if err != nil {
@@ -102,7 +102,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	}
 
 	if pipeMode {
-		if args.Lossless && deps.WriteOutput != nil {
+		if !args.Legacy && deps.WriteOutput != nil {
 			if err := deps.WriteOutput(result); err != nil {
 				deps.errorln("Error writing output:", err)
 				return err
@@ -112,7 +112,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		}
 	} else {
 		if args.Dest == "" {
-			if args.Lossless && deps.WriteOutput != nil {
+			if !args.Legacy && deps.WriteOutput != nil {
 				if err := deps.WriteOutput(result); err != nil {
 					deps.errorln("Error writing output:", err)
 					return err
@@ -124,7 +124,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		}
 
 		save := deps.SaveFile
-		if args.Lossless && deps.SaveLossless != nil {
+		if !args.Legacy && deps.SaveLossless != nil {
 			save = deps.SaveLossless
 		}
 		err := save(args.Dest, result)
@@ -186,7 +186,8 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		return
 	}
 
-	// default src to ~/.ssh
+	// Lossless conversion works on one physical file so source bytes and file
+	// boundaries remain unambiguous. Legacy mode retains the v2 directory scan.
 	if args.Src == "" {
 		homeDir, err := userHomeDir()
 		if err != nil {
@@ -194,7 +195,7 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 			exit(1)
 			return
 		}
-		args.Src = filepath.Join(homeDir, ".ssh")
+		args.Src = defaultSource(homeDir, args.Legacy)
 	}
 
 	// default to YAML when no conversion flag is provided
@@ -205,6 +206,13 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 	if err := Run(args, deps); err != nil {
 		exit(1)
 	}
+}
+
+func defaultSource(homeDir string, legacy bool) string {
+	if legacy {
+		return filepath.Join(homeDir, ".ssh")
+	}
+	return filepath.Join(homeDir, ".ssh", "config")
 }
 
 func main() {

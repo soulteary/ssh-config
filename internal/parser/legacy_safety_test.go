@@ -78,8 +78,8 @@ func TestGroupSSHConfigRejectsLossyLegacyInputs(t *testing.T) {
 			if err == nil {
 				t.Fatal("GroupSSHConfig() unexpectedly succeeded")
 			}
-			if !strings.Contains(err.Error(), test.want) || !strings.Contains(err.Error(), "use -lossless") {
-				t.Fatalf("GroupSSHConfig() error = %q, want %q and lossless hint", err, test.want)
+			if !strings.Contains(err.Error(), test.want) || !strings.Contains(err.Error(), "retry without -legacy") {
+				t.Fatalf("GroupSSHConfig() error = %q, want %q and default-mode hint", err, test.want)
 			}
 		})
 	}

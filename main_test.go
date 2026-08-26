@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 
 	Cmd "github.com/soulteary/ssh-config/v2/cmd"
@@ -184,13 +185,13 @@ func TestRun(t *testing.T) {
 	}
 }
 
-func TestRunUsesAtomicSaverInLosslessMode(t *testing.T) {
+func TestRunUsesAtomicSaverByDefault(t *testing.T) {
 	source := path.Join(t.TempDir(), "input.yaml")
 	if err := os.WriteFile(source, []byte("schema"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	atomicCalled := false
-	err := Run(Cmd.Args{ToSSH: true, Lossless: true, Src: source, Dest: "config"}, Dependencies{
+	err := Run(Cmd.Args{ToSSH: true, Src: source, Dest: "config"}, Dependencies{
 		Println:       func(...interface{}) (int, error) { return 0, nil },
 		CheckUseStdin: func() bool { return false },
 		GetContent:    func(string) ([]byte, error) { return []byte("schema"), nil },
@@ -209,10 +210,10 @@ func TestRunUsesAtomicSaverInLosslessMode(t *testing.T) {
 	}
 }
 
-func TestRunLosslessPipePreservesInputAndOutputBytes(t *testing.T) {
+func TestRunDefaultPipePreservesInputAndOutputBytes(t *testing.T) {
 	input := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
 	var output []byte
-	err := Run(Cmd.Args{ToSSH: true, Lossless: true}, Dependencies{
+	err := Run(Cmd.Args{ToSSH: true}, Dependencies{
 		Println:       func(...interface{}) (int, error) { return 0, nil },
 		CheckUseStdin: func() bool { return true },
 		GetUserInputFromStdin: func() string {
@@ -239,14 +240,14 @@ func TestRunLosslessPipePreservesInputAndOutputBytes(t *testing.T) {
 	}
 }
 
-func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
+func TestRunDefaultModeReadsItsStructuredOutput(t *testing.T) {
 	original := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
 	formats := []struct {
 		name string
 		args Cmd.Args
 	}{
-		{name: "YAML", args: Cmd.Args{ToYAML: true, Lossless: true}},
-		{name: "JSON", args: Cmd.Args{ToJSON: true, Lossless: true}},
+		{name: "YAML", args: Cmd.Args{ToYAML: true}},
+		{name: "JSON", args: Cmd.Args{ToJSON: true}},
 	}
 
 	for _, format := range formats {
@@ -256,7 +257,7 @@ func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
 				t.Fatal(err)
 			}
 			var output []byte
-			err = Run(Cmd.Args{ToSSH: true, Lossless: true}, Dependencies{
+			err = Run(Cmd.Args{ToSSH: true}, Dependencies{
 				Println:               func(...interface{}) (int, error) { return 0, nil },
 				CheckUseStdin:         func() bool { return true },
 				ReadStdin:             func() ([]byte, error) { return structured, nil },
@@ -279,7 +280,7 @@ func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
 
 func TestRunReportsStdinReadErrorsInLegacyMode(t *testing.T) {
 	wantErr := errors.New("stdin failed")
-	err := Run(Cmd.Args{ToYAML: true}, Dependencies{
+	err := Run(Cmd.Args{ToYAML: true, Legacy: true}, Dependencies{
 		Println:       func(...interface{}) (int, error) { return 0, nil },
 		CheckUseStdin: func() bool { return true },
 		ReadStdin:     func() ([]byte, error) { return nil, wantErr },
@@ -399,6 +400,16 @@ func TestMainWithDependencies(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDefaultSourceDependsOnConversionMode(t *testing.T) {
+	home := filepath.Join("home", "user")
+	if got, want := defaultSource(home, false), filepath.Join(home, ".ssh", "config"); got != want {
+		t.Fatalf("default lossless source = %q, want %q", got, want)
+	}
+	if got, want := defaultSource(home, true), filepath.Join(home, ".ssh"); got != want {
+		t.Fatalf("legacy source = %q, want %q", got, want)
 	}
 }
 

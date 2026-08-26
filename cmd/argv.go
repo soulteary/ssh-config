@@ -34,7 +34,7 @@ type Args struct {
 	ToYAML   bool
 	ToSSH    bool
 	ToJSON   bool
-	Lossless bool
+	Legacy   bool
 	Src      string
 	Dest     string
 	ShowHelp bool
@@ -42,21 +42,21 @@ type Args struct {
 }
 
 const (
-	DEFAULT_TO_YAML  = false
-	DEFAULT_TO_SSH   = false
-	DEFAULT_TO_JSON  = false
-	DEFAULT_LOSSLESS = false
-	DEFAULT_SRC      = ""
-	DEFAULT_DEST     = ""
-	DEFAULT_HELP     = false
-	DEFAULT_VERSION  = false
+	DEFAULT_TO_YAML = false
+	DEFAULT_TO_SSH  = false
+	DEFAULT_TO_JSON = false
+	DEFAULT_LEGACY  = false
+	DEFAULT_SRC     = ""
+	DEFAULT_DEST    = ""
+	DEFAULT_HELP    = false
+	DEFAULT_VERSION = false
 )
 
 func initFlags() {
 	flag.BoolVar(&args.ToYAML, "to-yaml", DEFAULT_TO_YAML, "Convert SSH config(Text/JSON) to YAML")
 	flag.BoolVar(&args.ToSSH, "to-ssh", DEFAULT_TO_SSH, "Convert SSH config(YAML/JSON) to SSH config")
 	flag.BoolVar(&args.ToJSON, "to-json", DEFAULT_TO_JSON, "Convert SSH config(YAML/Text) to JSON")
-	flag.BoolVar(&args.Lossless, "lossless", DEFAULT_LOSSLESS, "Use the lossless v3 parser and structured format")
+	flag.BoolVar(&args.Legacy, "legacy", DEFAULT_LEGACY, "Use the legacy lossy conversion format")
 	flag.StringVar(&args.Src, "src", DEFAULT_SRC, "Source file or directories path, valid when using non-pipeline mode")
 	flag.StringVar(&args.Dest, "dest", DEFAULT_DEST, "Destination file path, valid when using non-pipeline mode")
 	flag.BoolVar(&args.ShowHelp, "help", DEFAULT_HELP, "Show help")
@@ -77,7 +77,7 @@ func ResetFlags() {
 		ToYAML:   DEFAULT_TO_YAML,
 		ToSSH:    DEFAULT_TO_SSH,
 		ToJSON:   DEFAULT_TO_JSON,
-		Lossless: DEFAULT_LOSSLESS,
+		Legacy:   DEFAULT_LEGACY,
 		Src:      DEFAULT_SRC,
 		Dest:     DEFAULT_DEST,
 		ShowHelp: DEFAULT_HELP,
@@ -130,8 +130,8 @@ func CheckIOArgvValid(args Args) (result bool, desc string) {
 	if err != nil {
 		return false, fmt.Sprintf("Error: Can not inspect source path '%s': %v", args.Src, err)
 	}
-	if args.Lossless && info.IsDir() {
-		return false, "Lossless mode requires a single source file or standard input"
+	if !args.Legacy && info.IsDir() {
+		return false, "Lossless conversion requires a single source file or standard input; use -legacy to scan a directory"
 	}
 
 	// allow empty dest
