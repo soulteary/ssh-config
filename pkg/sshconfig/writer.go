@@ -39,6 +39,32 @@ type SaveOptions struct {
 	PreserveMode bool
 }
 
+type atomicFile interface {
+	Name() string
+	Chmod(fs.FileMode) error
+	Write([]byte) (int, error)
+	Sync() error
+	Close() error
+}
+
+type atomicWriteOperations struct {
+	lstat         func(string) (fs.FileInfo, error)
+	createTemp    func(string, string) (atomicFile, error)
+	rename        func(string, string) error
+	remove        func(string) error
+	syncDirectory func(string) error
+}
+
+var defaultAtomicWriteOperations = atomicWriteOperations{
+	lstat: os.Lstat,
+	createTemp: func(directory, pattern string) (atomicFile, error) {
+		return os.CreateTemp(directory, pattern)
+	},
+	rename:        os.Rename,
+	remove:        os.Remove,
+	syncDirectory: syncDirectory,
+}
+
 // Save atomically writes a document to path. Symbolic-link destinations are
 // rejected so a caller cannot unintentionally replace a link target.
 func (d *Document) Save(path string, options SaveOptions) error {
@@ -52,6 +78,10 @@ func (d *Document) Save(path string, options SaveOptions) error {
 // SaveAtomic writes data to a temporary file in the destination directory,
 // syncs it, and atomically renames it over path.
 func SaveAtomic(path string, data []byte, options SaveOptions) error {
+	return saveAtomic(path, data, options, defaultAtomicWriteOperations)
+}
+
+func saveAtomic(path string, data []byte, options SaveOptions, operations atomicWriteOperations) error {
 	if path == "" {
 		return fmt.Errorf("sshconfig: destination path is empty")
 	}
@@ -59,7 +89,7 @@ func SaveAtomic(path string, data []byte, options SaveOptions) error {
 	if mode == 0 {
 		mode = 0600
 	}
-	if info, err := os.Lstat(path); err == nil {
+	if info, err := operations.lstat(path); err == nil {
 		if info.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("sshconfig: refusing symbolic-link destination %s", path)
 		}
@@ -74,7 +104,7 @@ func SaveAtomic(path string, data []byte, options SaveOptions) error {
 	}
 
 	directory := filepath.Dir(path)
-	temp, err := os.CreateTemp(directory, "."+filepath.Base(path)+".tmp-*")
+	temp, err := operations.createTemp(directory, "."+filepath.Base(path)+".tmp-*")
 	if err != nil {
 		return fmt.Errorf("sshconfig: create temporary file: %w", err)
 	}
@@ -84,7 +114,7 @@ func SaveAtomic(path string, data []byte, options SaveOptions) error {
 		if !closed {
 			_ = temp.Close()
 		}
-		_ = os.Remove(tempPath)
+		_ = operations.remove(tempPath)
 	}()
 
 	if err := temp.Chmod(mode); err != nil {
@@ -100,8 +130,11 @@ func SaveAtomic(path string, data []byte, options SaveOptions) error {
 		return fmt.Errorf("sshconfig: close temporary file: %w", err)
 	}
 	closed = true
-	if err := os.Rename(tempPath, path); err != nil {
+	if err := operations.rename(tempPath, path); err != nil {
 		return fmt.Errorf("sshconfig: replace destination %s: %w", path, err)
+	}
+	if err := operations.syncDirectory(directory); err != nil {
+		return fmt.Errorf("sshconfig: sync destination directory %s: %w", directory, err)
 	}
 	return nil
 }
