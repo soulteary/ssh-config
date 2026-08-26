@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	Define "github.com/soulteary/ssh-config/v2/internal/define"
-	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
+	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
 )
 
 func TestGroupSSHConfigFromString(t *testing.T) {

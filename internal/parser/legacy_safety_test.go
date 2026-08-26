@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
+	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
 )
 
 func TestGroupStructuredConfigStrictReturnsDecodeErrors(t *testing.T) {

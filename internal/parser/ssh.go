@@ -21,10 +21,10 @@ import (
 	"reflect"
 	"strings"
 
-	Define "github.com/soulteary/ssh-config/v2/internal/define"
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
-	"github.com/soulteary/ssh-config/v2/pkg/lexer"
-	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
+	"github.com/soulteary/ssh-config/v3/pkg/lexer"
+	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
 )
 
 var legacySSHDirectives = map[string]struct{}{

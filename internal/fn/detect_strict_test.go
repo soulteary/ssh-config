@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
 )
 
 func TestDetectStringTypeStrictRejectsMalformedStructuredInput(t *testing.T) {

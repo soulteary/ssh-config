@@ -24,8 +24,8 @@ import (
 	"path"
 	"testing"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
-	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
+	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
 )
 
 func TestRun(t *testing.T) {

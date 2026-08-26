@@ -21,10 +21,10 @@ import (
 	"os"
 	"path/filepath"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
-	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
-	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
+	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
+	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
 )
 
 var (

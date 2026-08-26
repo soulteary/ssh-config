@@ -19,9 +19,9 @@ package parser
 import (
 	"strings"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
-	Define "github.com/soulteary/ssh-config/v2/internal/define"
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
 )
 
 func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
