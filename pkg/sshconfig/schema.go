@@ -158,10 +158,35 @@ func (s Schema) Validate() error {
 			if node.Type != "directive" && node.Directive != nil {
 				return fmt.Errorf("sshconfig: document %d node %d of type %q has a directive", index, nodeIndex, node.Type)
 			}
-			if _, err := decodeSchemaRaw(node.RawBase64); err != nil {
+			raw, err := decodeSchemaRaw(node.RawBase64)
+			if err != nil {
+				return fmt.Errorf("sshconfig: document %d node %d: %w", index, nodeIndex, err)
+			}
+			if err := validateSchemaNodeRaw(node, raw); err != nil {
 				return fmt.Errorf("sshconfig: document %d node %d: %w", index, nodeIndex, err)
 			}
 		}
+	}
+	return nil
+}
+
+func validateSchemaNodeRaw(node SchemaNode, raw []byte) error {
+	if len(raw) == 0 {
+		if node.Type == "blank" || node.Type == "directive" && node.Directive != nil {
+			return nil
+		}
+		return fmt.Errorf("%s node has no raw bytes", node.Type)
+	}
+	doc, err := Parse(raw)
+	if err != nil {
+		return fmt.Errorf("parse raw bytes: %w", err)
+	}
+	if len(doc.nodes) != 1 {
+		return fmt.Errorf("raw bytes contain %d physical lines; want exactly one", len(doc.nodes))
+	}
+	actual := schemaNodeType(doc.nodes[0].Kind)
+	if actual != node.Type {
+		return fmt.Errorf("raw bytes describe a %s node, not %s", actual, node.Type)
 	}
 	return nil
 }
