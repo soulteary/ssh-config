@@ -153,7 +153,7 @@ func (s Schema) Validate() error {
 				return fmt.Errorf("sshconfig: document %d node %d has an empty keyword", index, nodeIndex)
 			}
 			if node.Directive != nil {
-				if err := validateDirectiveInput(node.Directive.Keyword, node.Directive.Arguments, node.Directive.Comment); err != nil {
+				if err := ValidateDirectiveInput(node.Directive.Keyword, node.Directive.Arguments, node.Directive.Comment); err != nil {
 					return fmt.Errorf("sshconfig: document %d node %d: %w", index, nodeIndex, err)
 				}
 			}

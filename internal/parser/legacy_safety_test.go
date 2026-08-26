@@ -18,6 +18,20 @@ func TestGroupStructuredConfigStrictReturnsDecodeErrors(t *testing.T) {
 	}
 }
 
+func TestGroupStructuredConfigRejectsCrossLineFields(t *testing.T) {
+	t.Parallel()
+
+	jsonInput := `[{"Name":"example","Data":{"User":"alice\nHost injected"}}]`
+	if _, err := Parser.GroupJSONConfigStrict(jsonInput); err == nil {
+		t.Fatal("GroupJSONConfigStrict() accepted a cross-line value")
+	}
+
+	yamlInput := "Group test:\n  Hosts:\n    example:\n      config:\n        'User\nProxyCommand': alice\n"
+	if _, err := Parser.GroupYAMLConfigStrict(yamlInput); err == nil {
+		t.Fatal("GroupYAMLConfigStrict() accepted a cross-line keyword")
+	}
+}
+
 func TestGroupSSHConfigRejectsLossyLegacyInputs(t *testing.T) {
 	t.Parallel()
 

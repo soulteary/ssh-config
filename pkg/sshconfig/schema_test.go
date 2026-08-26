@@ -267,6 +267,20 @@ Group production:
 	}
 }
 
+func TestMigrateLegacyFormatsRejectCrossLineFields(t *testing.T) {
+	t.Parallel()
+
+	legacyJSON := []byte(`[{"Name":"example","Data":{"User":"alice\nHost injected"}}]`)
+	if _, err := MigrateLegacyJSON(legacyJSON, "config"); err == nil {
+		t.Fatal("MigrateLegacyJSON() accepted a cross-line value")
+	}
+
+	legacyYAML := []byte("Group test:\n  Hosts:\n    'example\nHost injected':\n      config:\n        User: alice\n")
+	if _, err := MigrateLegacyYAML(legacyYAML, "config"); err == nil {
+		t.Fatal("MigrateLegacyYAML() accepted a cross-line host")
+	}
+}
+
 func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []byte) {
 	t.Helper()
 	doc, err := schema.Document(path)

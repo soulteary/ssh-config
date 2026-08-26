@@ -192,5 +192,8 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 			}
 		}
 	}
+	if err := validateLegacyHostConfigs(hostConfigs); err != nil {
+		return nil, err
+	}
 	return hostConfigs, nil
 }
