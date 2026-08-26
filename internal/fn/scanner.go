@@ -52,7 +52,16 @@ func IsExcluded(filename string) bool {
 }
 
 func IsConfigFile(path string) bool {
-	// read file first few lines to determine if it's SSH config file format
+	return hasConfigDirective(path, func(string) bool { return true })
+}
+
+func isLegacyDirectoryConfigFile(path string) bool {
+	return hasConfigDirective(path, func(keyword string) bool {
+		return keyword != "include"
+	})
+}
+
+func hasConfigDirective(path string, accept func(string) bool) bool {
 	file, err := os.Open(path)
 	if err != nil {
 		return false
@@ -72,7 +81,8 @@ func IsConfigFile(path string) bool {
 		}
 		nodes := doc.Nodes()
 		if len(nodes) == 1 && nodes[0].Directive != nil {
-			if _, known := sshconfig.LookupKeyword(nodes[0].Directive.KeywordValue); known {
+			keyword := nodes[0].Directive.KeywordValue
+			if _, known := sshconfig.LookupKeyword(keyword); known && accept(keyword) {
 				return true
 			}
 		}
@@ -125,7 +135,7 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			return nil
 		}
 
-		if !IsConfigFile(path) {
+		if !isLegacyDirectoryConfigFile(path) {
 			return nil
 		}
 
