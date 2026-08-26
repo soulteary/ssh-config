@@ -46,13 +46,13 @@ ssh-config [options]
 Run without arguments to export `~/.ssh/config` as lossless v3 YAML on standard output:
 
 ```bash
-ssh-config
+ssh-config -lossless
 ```
 
 Or, use Linux pipes to manipulate files:
 
 ```bash
-cat input_file | ssh-config -to-yaml > output_file
+cat input_file | ssh-config -lossless -to-yaml > output_file
 ```
 
 ### Docker
@@ -68,20 +68,20 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 Convert file (test.yaml) in the current directory to YAML (abc.yaml):
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 Just want to see the conversion results:
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml
 ```
 
 If you want to use Linux pipelines, you can first enter the Docker interactive command line:
 
 ```bash
 docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest bash
-cat /ssh/test.yaml | ssh-config -to-yaml
+cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 ```
 
 ### Options
@@ -90,6 +90,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 - `-src`: Specify the source file. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`.
 - `-dest`: Specify the path to save the configuration file. Its parent directory must already exist. When omitted, the converted result is written to standard output.
 - `-legacy`: Use the previous lossy map/array formats. This mode also enables directory scanning.
+- `-lossless`: Deprecated compatibility alias; lossless conversion is already the default in v3.
 - `-help`: View program command-line help
 - `-version`: Print release, commit, build, and tree-state metadata
 
@@ -104,27 +105,27 @@ ssh-config
 2. Convert YAML format to SSH config format:
 
 ```bash
-ssh-config -to-ssh -src input.yaml -dest output.conf
+ssh-config -lossless -to-ssh -src input.yaml -dest output.conf
 ```
 
 3. Convert SSH config format to JSON format:
 
 ```bash
-ssh-config -to-json -src ~/.ssh/config -dest output.json
+ssh-config -lossless -to-json -src ~/.ssh/config -dest output.json
 ```
 
 4. Read from standard input, output to standard output, and save in YAML format:
 
 ```bash
-cat input.conf | ssh-config -to-yaml > output.yaml
+cat input.conf | ssh-config -lossless -to-yaml > output.yaml
 ```
 
 5. Losslessly edit a configuration through the v3 YAML representation:
 
 ```bash
-ssh-config -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 # Edit directive fields in config.v3.yaml. Unchanged lines retain their exact bytes.
-ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
 The previous YAML/JSON formats remain readable and are migrated to schema v3 by default. Use `-legacy` only when an existing consumer still requires the old map/array output. Repeated values and directive ordering already absent from a legacy document cannot be reconstructed.

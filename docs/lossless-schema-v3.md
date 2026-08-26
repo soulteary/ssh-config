@@ -2,7 +2,7 @@
 
 The v3 YAML/JSON schema is a transport and editing format for OpenSSH client
 configuration files. Its version number is independent of the application's
-semantic version and the Go module's `/v2` path.
+semantic version and the Go module's `/v3` path.
 
 ## Design guarantees
 
@@ -84,9 +84,9 @@ directive view.
 ## CLI workflow
 
 ```bash
-ssh-config -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 # Edit only directive.keyword, directive.arguments, or directive.comment.
-ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
 Use `-to-json` instead of `-to-yaml` for a JSON envelope. Destination files are

@@ -10,8 +10,8 @@ The default command reads one physical SSH configuration file and writes v3
 YAML:
 
 ```bash
-ssh-config -to-yaml -src ~/.ssh/config -dest config.v3.yaml
-ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
 Without `-src`, the default converter reads `~/.ssh/config`. It does not scan a
@@ -24,9 +24,11 @@ directory scan:
 ssh-config -legacy -to-yaml -src ~/.ssh -dest config.legacy.yaml
 ```
 
-The old `-lossless` option is no longer needed. Remove it from scripts. Legacy
-YAML and JSON remain valid inputs in the default mode and are migrated to v3;
-`-legacy` controls the output pipeline, not input compatibility.
+The old `-lossless` option is retained as a deprecated compatibility alias, so
+commands remain safe while v2 and v3 installations coexist. It is a no-op in
+v3 and can be removed after every installation has upgraded. Legacy YAML and
+JSON remain valid inputs in the default mode and are migrated to v3; `-legacy`
+controls the output pipeline, not input compatibility.
 
 ## Go module path
 
