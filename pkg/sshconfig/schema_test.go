@@ -74,6 +74,87 @@ func TestSchemaRendersOnlyChangedDirective(t *testing.T) {
 	}
 }
 
+func TestSchemaPreservesInvalidNodesAsRawBytes(t *testing.T) {
+	t.Parallel()
+	input := []byte("Host example\n  ProxyCommand \"unterminated\n")
+	doc, _ := Parse(input)
+	if len(doc.Diagnostics()) == 0 {
+		t.Fatal("test input did not produce a diagnostic")
+	}
+
+	schemaDocument, err := doc.ToSchema("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if schemaDocument.Nodes[1].Type != "invalid" || schemaDocument.Nodes[1].Directive != nil {
+		t.Fatalf("invalid schema node = %#v, want raw-only invalid node", schemaDocument.Nodes[1])
+	}
+	schema := NewSchema(schemaDocument)
+	if err := schema.Validate(); err != nil {
+		t.Fatalf("exported schema does not validate: %v", err)
+	}
+
+	jsonData, err := MarshalSchemaJSON(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromJSON, err := UnmarshalSchemaJSON(jsonData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSchemaDocumentBytes(t, fromJSON, "config", input)
+
+	yamlData, err := MarshalSchemaYAML(schema)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromYAML, err := UnmarshalSchemaYAML(yamlData)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertSchemaDocumentBytes(t, fromYAML, "config", input)
+}
+
+func TestSchemaEditPreservesMissingFinalNewline(t *testing.T) {
+	t.Parallel()
+	input := []byte("Host example\n  User old")
+	doc, _ := Parse(input)
+	schemaDocument, err := doc.ToSchema("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaDocument.Nodes[1].Directive.Arguments = []string{"new"}
+
+	reconstructed, err := schemaDocument.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := reconstructed.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("Host example\nUser new")
+	if !bytes.Equal(got, want) {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestSchemaNewDirectiveDefaultsToLF(t *testing.T) {
+	t.Parallel()
+	schemaDocument := SchemaDocument{Nodes: []SchemaNode{{
+		Type:      "directive",
+		Directive: &SchemaDirective{Keyword: "Host", Arguments: []string{"example"}},
+	}}}
+	doc, err := schemaDocument.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := doc.MarshalPreserve()
+	if want := []byte("Host example\n"); !bytes.Equal(got, want) {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 func TestSchemaStrictValidation(t *testing.T) {
 	t.Parallel()
 	if _, err := UnmarshalSchemaJSON([]byte(`{"schemaVersion":3,"documents":[],"extra":true}`)); err == nil {
