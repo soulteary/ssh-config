@@ -300,7 +300,7 @@ func dereferenceYAMLAlias(node *yamlv3.Node) *yamlv3.Node {
 }
 
 func isYAMLMergeKey(node *yamlv3.Node) bool {
-	return node != nil && (node.Tag == "!!merge" || node.Value == "<<")
+	return node != nil && node.Tag == "!!merge"
 }
 
 func orderedLegacyKeys[V any](preferred []string, values map[string]V) []string {
