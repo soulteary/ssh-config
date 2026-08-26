@@ -1,8 +1,8 @@
-FROM alpine:3.20.0 as builder
-RUN apk --update add ca-certificates
+FROM alpine:3.24.1 AS builder
+RUN apk add --no-cache ca-certificates
 
-FROM alpine:3.20.0
-RUN apk --update add bash
+FROM alpine:3.24.1
+RUN apk add --no-cache bash
 LABEL maintainer "soulteary <soulteary@gmail.com>"
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 ARG TARGETPLATFORM

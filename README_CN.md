@@ -113,7 +113,7 @@ ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 
 ### 依赖
 
-- Go 1.26+
+- Go 1.27+
 
 ### 构建
 
