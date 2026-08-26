@@ -340,12 +340,81 @@ func TestMigrateLegacyYAMLRejectsDuplicateMergeOperands(t *testing.T) {
 	}
 }
 
-
 func TestMigrateLegacyYAMLRejectsQuotedMergeKeyAsUnknownField(t *testing.T) {
 	t.Parallel()
 	input := []byte("Group work:\n  \"<<\": {}\n")
 	if _, err := MigrateLegacyYAML(input, "config"); err == nil || !strings.Contains(err.Error(), "unknown YAML field") {
 		t.Fatalf("MigrateLegacyYAML() error = %v, want unknown field error", err)
+	}
+}
+
+func TestMigrateLegacyYAMLPreservesGroupAndHostOrder(t *testing.T) {
+	t.Parallel()
+	input := []byte(`Group z:
+  Hosts:
+    special.example.com:
+      config:
+        User: special
+    '*.example.com':
+      config:
+        User: wildcard
+Group a:
+  Hosts:
+    last.example.com:
+      config:
+        User: last
+`)
+	schema, err := MigrateLegacyYAML(input, "config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := schema.Document("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	special := strings.Index(string(output), "Host special.example.com")
+	wildcard := strings.Index(string(output), "Host *.example.com")
+	last := strings.Index(string(output), "Host last.example.com")
+	if special < 0 || wildcard < 0 || last < 0 || !(special < wildcard && wildcard < last) {
+		t.Fatalf("migration changed group or host order:\n%s", output)
+	}
+}
+
+func TestMigrateLegacyYAMLPreservesMergedHostOrder(t *testing.T) {
+	t.Parallel()
+	input := []byte(`Group template: &group
+  Prefix: template-
+  Hosts:
+    z-host:
+      config:
+        User: z
+    a-host:
+      config:
+        User: a
+Group inherited:
+  <<: *group
+  Prefix: inherited-
+`)
+	schema, err := MigrateLegacyYAML(input, "config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc, err := schema.Document("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	z := strings.Index(string(output), "Host inherited-z-host")
+	a := strings.Index(string(output), "Host inherited-a-host")
+	if z < 0 || a < 0 || z > a {
+		t.Fatalf("migration changed inherited host order:\n%s", output)
 	}
 }
 

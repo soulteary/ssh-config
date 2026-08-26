@@ -121,7 +121,7 @@ ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
-The previous YAML/JSON formats remain the default for compatibility. Lossless mode can import them, but ordering and repeated values already discarded by a legacy map cannot be reconstructed.
+The previous YAML/JSON formats remain the default for compatibility. Lossless mode can import them and retains YAML group and host source order, but repeated values and directive ordering not represented by a legacy map cannot be reconstructed.
 
 See the [lossless schema v3 specification](./docs/lossless-schema-v3.md) for node shapes, byte-preservation rules, editing behavior, API examples, and migration limits.
 

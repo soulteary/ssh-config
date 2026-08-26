@@ -113,12 +113,13 @@ SSH source.
 ## Legacy migration
 
 Lossless mode accepts the previous map-based YAML and host-array JSON formats
-and migrates them deterministically into v3. Migration sorts map keys, applies
-legacy `Default` and `Common` values using the existing precedence rules, and
-emits a concrete v3 document.
+and migrates them deterministically into v3. YAML group and host source order,
+including order inherited through merge aliases, is retained because SSH host
+precedence is order-sensitive. Directive map keys are sorted, and legacy
+`Default` and `Common` values use the existing precedence rules.
 
 Migration cannot recover information that the legacy representation never
-stored, including directive order, duplicate keys, physical comments and
+stored, including repeated directive values, physical comments and
 spacing, `Match` structure, `Include` boundaries, or unknown directives that
 were discarded earlier. Keep an original SSH source file when exact recovery
 matters.
