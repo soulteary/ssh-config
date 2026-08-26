@@ -124,6 +124,24 @@ func TestLex_QuotedEscape(t *testing.T) {
 	assertTokens(t, tokens, want)
 }
 
+func TestLex_MixedQuotedAndEqualsArguments(t *testing.T) {
+	input := "IdentityFile /tmp/key\" with \"'space'\nProxyCommand env FOO=bar ssh -W %h:%p \"jump host\"\n"
+	tokens, err := Lex(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := make([]string, 0)
+	for _, token := range tokens {
+		if token.Kind == TokenValue || token.Kind == TokenQuoted {
+			values = append(values, token.Value)
+		}
+	}
+	want := []string{"/tmp/key with space", "env", "FOO=bar", "ssh", "-W", "%h:%p", "jump host"}
+	if !reflect.DeepEqual(values, want) {
+		t.Fatalf("values = %#v, want %#v", values, want)
+	}
+}
+
 func TestLex_UnclosedQuote(t *testing.T) {
 	_, err := Lex(`Host "unclosed`)
 	if err == nil {
