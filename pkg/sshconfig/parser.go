@@ -94,7 +94,9 @@ func parseArguments(doc *Document, line, lineStart, start, end int) ([]Argument,
 	var arguments []Argument
 	i := start
 	for {
-		i = skipHorizontalSpace(doc.source, i, end)
+		for i < end && isArgumentSpace(doc.source[i]) {
+			i++
+		}
 		if i >= end {
 			return arguments, nil, false
 		}
@@ -109,31 +111,37 @@ func parseArguments(doc *Document, line, lineStart, start, end int) ([]Argument,
 		argumentStart := i
 		quote := QuoteNone
 		quoteByte := byte(0)
-		if doc.source[i] == '\'' || doc.source[i] == '"' {
-			quoteByte = doc.source[i]
-			if quoteByte == '\'' {
-				quote = QuoteSingle
-			} else {
-				quote = QuoteDouble
-			}
-			i++
-		}
-
 		value := make([]byte, 0, end-i)
-		closed := quoteByte == 0
 		for i < end {
 			ch := doc.source[i]
+			if ch == '\\' {
+				if i+1 < end && isEscapable(doc.source[i+1], quoteByte) {
+					i++
+					value = append(value, doc.source[i])
+					i++
+					continue
+				}
+				value = append(value, ch)
+				i++
+				continue
+			}
+			if quoteByte == 0 && isArgumentSpace(ch) {
+				break
+			}
+			if quoteByte == 0 && (ch == '\'' || ch == '"') {
+				quoteByte = ch
+				if quote == QuoteNone {
+					if ch == '\'' {
+						quote = QuoteSingle
+					} else {
+						quote = QuoteDouble
+					}
+				}
+				i++
+				continue
+			}
 			if quoteByte != 0 && ch == quoteByte {
-				i++
-				closed = true
-				break
-			}
-			if quoteByte == 0 && isHorizontalSpace(ch) {
-				break
-			}
-			if ch == '\\' && i+1 < end && isEscapable(doc.source[i+1], quoteByte) {
-				i++
-				value = append(value, doc.source[i])
+				quoteByte = 0
 				i++
 				continue
 			}
@@ -141,15 +149,9 @@ func parseArguments(doc *Document, line, lineStart, start, end int) ([]Argument,
 			i++
 		}
 
-		if !closed {
+		if quoteByte != 0 {
 			doc.addDiagnostic(line, argumentStart-lineStart+1, argumentStart, "unterminated quoted argument")
 			return arguments, nil, true
-		}
-		if quoteByte != 0 && i < end && !isHorizontalSpace(doc.source[i]) && doc.source[i] != '#' {
-			for i < end && !isHorizontalSpace(doc.source[i]) {
-				value = append(value, doc.source[i])
-				i++
-			}
 		}
 		arguments = append(arguments, Argument{
 			Token: Token{
@@ -160,6 +162,10 @@ func parseArguments(doc *Document, line, lineStart, start, end int) ([]Argument,
 			Quote: quote,
 		})
 	}
+}
+
+func isArgumentSpace(ch byte) bool {
+	return ch == ' ' || ch == '\t'
 }
 
 func (d *Document) addDiagnostic(line, column, offset int, message string) {

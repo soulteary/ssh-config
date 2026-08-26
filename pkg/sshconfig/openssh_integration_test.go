@@ -90,6 +90,48 @@ func TestOpenSSHAcceptsSupportedLexicalForms(t *testing.T) {
 	}
 }
 
+func TestOpenSSHArgvSemanticsSurviveCanonicalRewrite(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("OpenSSH integration fixture uses POSIX file permissions")
+	}
+	ssh, err := exec.LookPath("ssh")
+	if err != nil {
+		t.Skip("OpenSSH client is not installed")
+	}
+	t.Parallel()
+
+	directory := t.TempDir()
+	original := filepath.Join(directory, "original.conf")
+	generated := filepath.Join(directory, "generated.conf")
+	content := []byte("Host example\n" +
+		`    SetEnv FIRST=one" two" SECOND='three'four THIRD=hash#tag FOUR=quote\"mark` + "\n")
+	writeTestConfig(t, original, string(content))
+
+	doc, err := Parse(content)
+	if err != nil || len(doc.Diagnostics()) != 0 {
+		t.Fatalf("Parse() = %v, diagnostics = %#v", err, doc.Diagnostics())
+	}
+	node := doc.Nodes()[1]
+	arguments := make([]string, 0, len(node.Directive.Arguments))
+	for _, argument := range node.Directive.Arguments {
+		arguments = append(arguments, argument.Value)
+	}
+	if err := doc.ReplaceDirective(node.ID, "SetEnv", arguments...); err != nil {
+		t.Fatal(err)
+	}
+	output, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestConfig(t, generated, string(output))
+
+	originalOutput := runSSHConfig(t, ssh, directory, original, "example")
+	generatedOutput := runSSHConfig(t, ssh, directory, generated, "example")
+	if !bytes.Equal(originalOutput, generatedOutput) {
+		t.Fatalf("effective configuration changed after canonical rewrite\n--- original ---\n%s\n--- generated ---\n%s\n--- rewritten source ---\n%s", originalOutput, generatedOutput, output)
+	}
+}
+
 func runSSHConfig(t *testing.T, ssh, home, config, host string) []byte {
 	t.Helper()
 	command := exec.Command(ssh, "-G", "-F", config, host)

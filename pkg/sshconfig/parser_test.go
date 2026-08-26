@@ -88,6 +88,45 @@ func TestMalformedQuoteIsRetainedAndDiagnosed(t *testing.T) {
 	}
 }
 
+func TestParseArgumentsMatchesOpenSSHArgvSplit(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{name: "mid token quotes", input: `SetEnv foo" bar"baz`, want: []string{"foo barbaz"}},
+		{name: "adjacent quotes", input: `SetEnv "one"'two'"three"`, want: []string{"onetwothree"}},
+		{name: "escaped quotes", input: `SetEnv one\"two one\'three`, want: []string{`one"two`, "one'three"}},
+		{name: "escaped space outside quotes", input: `SetEnv one\ two`, want: []string{"one two"}},
+		{name: "escaped space inside quotes", input: `SetEnv "one\ two"`, want: []string{`one\ two`}},
+		{name: "unrecognized escape", input: `SetEnv one\q`, want: []string{`one\q`}},
+		{name: "hash in token", input: `SetEnv value#literal # comment`, want: []string{"value#literal"}},
+		{name: "form feed is not argv whitespace", input: "SetEnv one\ftwo", want: []string{"one\ftwo"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			doc, err := Parse([]byte(test.input + "\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if diagnostics := doc.Diagnostics(); len(diagnostics) != 0 {
+				t.Fatalf("diagnostics = %#v", diagnostics)
+			}
+			directive := doc.Nodes()[0].Directive
+			got := make([]string, 0, len(directive.Arguments))
+			for _, argument := range directive.Arguments {
+				got = append(got, argument.Value)
+			}
+			if !reflect.DeepEqual(got, test.want) {
+				t.Fatalf("arguments = %#v, want %#v", got, test.want)
+			}
+		})
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	t.Parallel()
 	doc, err := ParseFile("config", func(path string) ([]byte, error) {
