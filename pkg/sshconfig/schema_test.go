@@ -232,6 +232,44 @@ func TestSchemaStrictValidation(t *testing.T) {
 	}
 }
 
+func TestSchemaYAMLMergeExplicitValuesWin(t *testing.T) {
+	t.Parallel()
+	inputs := []string{
+		"schemaVersion: 3\ndocuments:\n- nodes:\n  - type: directive\n    directive:\n      <<: {keyword: ProxyCommand, arguments: [evil]}\n      keyword: Host\n      arguments: [safe]\n",
+		"schemaVersion: 3\ndocuments:\n- nodes:\n  - type: directive\n    directive:\n      keyword: Host\n      arguments: [safe]\n      <<: {keyword: ProxyCommand, arguments: [evil]}\n",
+	}
+	for _, input := range inputs {
+		schema, err := UnmarshalSchemaYAML([]byte(input))
+		if err != nil {
+			t.Fatalf("UnmarshalSchemaYAML() error = %v", err)
+		}
+		doc, err := schema.Document("")
+		if err != nil {
+			t.Fatal(err)
+		}
+		output, err := doc.MarshalPreserve()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(output) != "Host safe\n" {
+			t.Fatalf("merged directive = %q, want Host safe", output)
+		}
+	}
+}
+
+func TestSchemaYAMLRejectsAmbiguousDocuments(t *testing.T) {
+	t.Parallel()
+	inputs := []string{
+		"schemaVersion: 3\ndocuments:\n- nodes:\n  - type: directive\n    directive:\n      <<: {keyword: Host, keyword: Match, arguments: [safe]}\n",
+		"schemaVersion: 3\ndocuments:\n- nodes: []\n---\nschemaVersion: 3\ndocuments:\n- nodes: []\n",
+	}
+	for _, input := range inputs {
+		if _, err := UnmarshalSchemaYAML([]byte(input)); err == nil {
+			t.Fatalf("UnmarshalSchemaYAML() accepted ambiguous input:\n%s", input)
+		}
+	}
+}
+
 func TestSchemaRejectsCrossLineDirectiveFields(t *testing.T) {
 	t.Parallel()
 	tests := []SchemaDirective{
@@ -339,7 +377,6 @@ func TestMigrateLegacyYAMLRejectsDuplicateMergeOperands(t *testing.T) {
 		t.Fatal("MigrateLegacyYAML() accepted duplicate fields inside a merge operand")
 	}
 }
-
 
 func TestMigrateLegacyYAMLRejectsQuotedMergeKeyAsUnknownField(t *testing.T) {
 	t.Parallel()
