@@ -360,11 +360,11 @@ func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
 					lines = append(lines, fmt.Sprintf("# %s", note))
 				}
 			}
-			lines = append(lines, fmt.Sprintf("Host %s", config.Name))
+			lines = append(lines, fmt.Sprintf("Host %s", renderLegacyHostPatterns(config.Name)))
 
 			orderMaps := Fn.GetOrderMaps(config.Config)
 			for _, field := range orderMaps.Keys {
-				lines = append(lines, fmt.Sprintf("    %s %s", field, orderMaps.Data[field]))
+				lines = append(lines, fmt.Sprintf("    %s %s", field, renderLegacyDirectiveValue(field, orderMaps.Data[field])))
 			}
 		}
 		lines = append(lines, "")
@@ -381,14 +381,34 @@ func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
 			}
 
 			hostName := fmt.Sprintf("%s%s", config.Extra.Prefix, config.Name)
-			lines = append(lines, fmt.Sprintf("Host %s", hostName))
+			lines = append(lines, fmt.Sprintf("Host %s", renderLegacyHostPatterns(hostName)))
 			orderMaps := Fn.GetOrderMaps(config.Config)
 			for _, field := range orderMaps.Keys {
-				lines = append(lines, fmt.Sprintf("    %s %s", field, orderMaps.Data[field]))
+				lines = append(lines, fmt.Sprintf("    %s %s", field, renderLegacyDirectiveValue(field, orderMaps.Data[field])))
 			}
 			lines = append(lines, "")
 		}
 		lines = append(lines, "")
 	}
 	return []byte(strings.Join(lines, "\n"))
+}
+
+func renderLegacyHostPatterns(value string) string {
+	patterns := strings.Fields(value)
+	if len(patterns) == 0 {
+		return sshconfig.QuoteArgument(value)
+	}
+	for index, pattern := range patterns {
+		patterns[index] = sshconfig.QuoteArgument(pattern)
+	}
+	return strings.Join(patterns, " ")
+}
+
+func renderLegacyDirectiveValue(keyword, value string) string {
+	// ProxyCommand is a shell command represented by the entire remainder of
+	// the line. Quoting it as one SSH argument changes the command executed.
+	if strings.EqualFold(keyword, "ProxyCommand") {
+		return value
+	}
+	return sshconfig.QuoteArgument(value)
 }

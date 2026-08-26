@@ -156,11 +156,12 @@ func writeArguments(out *bytes.Buffer, arguments []string) {
 		if i > 0 {
 			out.WriteByte(' ')
 		}
-		out.WriteString(quoteArgument(argument))
+		out.WriteString(QuoteArgument(argument))
 	}
 }
 
-func quoteArgument(argument string) string {
+// QuoteArgument renders one argument so reparsing returns the same value.
+func QuoteArgument(argument string) string {
 	if argument != "" && !strings.ContainsAny(argument, " \t\r\n#\\\"'") {
 		return argument
 	}
