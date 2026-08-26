@@ -614,6 +614,30 @@ func TestGetPathContentSeparatesFilesWithoutFinalNewline(t *testing.T) {
 	}
 }
 
+func TestGetPathContentSkipsIncludeOnlyEntry(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	fragmentDirectory := filepath.Join(directory, "config.d")
+	if err := os.Mkdir(fragmentDirectory, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "config"), []byte("Include config.d/*\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	fragment := []byte("Host work\n  User alice\n")
+	if err := os.WriteFile(filepath.Join(fragmentDirectory, "work"), fragment, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := Fn.GetPathContent(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(content, fragment) {
+		t.Fatalf("GetPathContent() = %q, want only the included fragment %q", content, fragment)
+	}
+}
+
 func TestSave(t *testing.T) {
 	testDir := filepath.Join(os.TempDir(), "test_save")
 	defer os.RemoveAll(testDir)
