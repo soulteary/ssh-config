@@ -140,6 +140,30 @@ func TestSchemaEditPreservesMissingFinalNewline(t *testing.T) {
 	}
 }
 
+func TestSchemaPreservesRawDirectiveWithoutArguments(t *testing.T) {
+	t.Parallel()
+	input := []byte("  FutureOption\n")
+	doc, err := Parse(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaDocument, err := doc.ToSchema("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconstructed, err := schemaDocument.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := reconstructed.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, input) {
+		t.Fatalf("schema round trip mismatch\n got: %q\nwant: %q", got, input)
+	}
+}
+
 func TestSchemaNewDirectiveDefaultsToLF(t *testing.T) {
 	t.Parallel()
 	schemaDocument := SchemaDocument{Nodes: []SchemaNode{{
