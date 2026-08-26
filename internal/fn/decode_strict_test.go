@@ -56,6 +56,14 @@ func TestStrictLegacyDecodersKeepValidInput(t *testing.T) {
 	if prefix := yamlConfig.Groups["group work"].Hosts["example"].Extra.Prefix; prefix != "host-" {
 		t.Fatalf("host prefix = %q, want host-", prefix)
 	}
+	overrideFirst := "global:\n  User: bob\n  <<: {User: alice, Port: \"22\"}\n"
+	yamlConfig, err = Fn.GetYamlDataStrict(overrideFirst)
+	if err != nil {
+		t.Fatalf("GetYamlDataStrict() override-first error = %v", err)
+	}
+	if yamlConfig.Global["User"] != "bob" || yamlConfig.Global["Port"] != "22" {
+		t.Fatalf("override-first YAML merge = %#v", yamlConfig.Global)
+	}
 	if _, err := Fn.GetJSONDataStrict("  [{\"Name\":\"example\",\"Data\":{\"User\":\"alice\"}}]\n"); err != nil {
 		t.Fatalf("GetJSONDataStrict() error = %v", err)
 	}

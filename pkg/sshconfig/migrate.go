@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 type legacyHost struct {
@@ -34,7 +34,10 @@ type legacyYAML struct {
 // the legacy input.
 func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 	var legacy legacyYAML
-	if err := yaml.UnmarshalStrict(data, &legacy); err != nil {
+	if err := ValidateLegacyYAML(data); err != nil {
+		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
+	}
+	if err := yaml.Unmarshal(data, &legacy); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
 	}
 	var output bytes.Buffer
