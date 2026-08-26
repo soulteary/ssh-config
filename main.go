@@ -87,10 +87,14 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		userInput = string(content)
 	}
 
-	fileType, err := Fn.DetectStringTypeStrict(userInput)
-	if err != nil {
-		deps.errorln("Error detecting config format:", err)
-		return err
+	fileType := Fn.DetectStringType(userInput)
+	if !args.Lossless {
+		var err error
+		fileType, err = Fn.DetectStringTypeStrict(userInput)
+		if err != nil {
+			deps.errorln("Error detecting config format:", err)
+			return err
+		}
 	}
 	result, err := deps.Process(fileType, userInput, args)
 	if err != nil {

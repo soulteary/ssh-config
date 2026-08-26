@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	Cmd "github.com/soulteary/ssh-config/v2/cmd"
+	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
 )
 
 func TestRun(t *testing.T) {
@@ -235,6 +236,44 @@ func TestRunLosslessPipePreservesInputAndOutputBytes(t *testing.T) {
 	}
 	if !bytes.Equal(output, input) {
 		t.Fatalf("stdout = %q, want %q", output, input)
+	}
+}
+
+func TestRunLosslessReadsItsStructuredOutput(t *testing.T) {
+	original := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
+	formats := []struct {
+		name string
+		args Cmd.Args
+	}{
+		{name: "YAML", args: Cmd.Args{ToYAML: true, Lossless: true}},
+		{name: "JSON", args: Cmd.Args{ToJSON: true, Lossless: true}},
+	}
+
+	for _, format := range formats {
+		t.Run(format.name, func(t *testing.T) {
+			structured, err := Parser.Process("TEXT", string(original), format.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var output []byte
+			err = Run(Cmd.Args{ToSSH: true, Lossless: true}, Dependencies{
+				Println:               func(...interface{}) (int, error) { return 0, nil },
+				CheckUseStdin:         func() bool { return true },
+				GetLosslessStdin:      func() ([]byte, error) { return structured, nil },
+				GetUserInputFromStdin: func() string { t.Fatal("legacy stdin reader called"); return "" },
+				Process:               Parser.Process,
+				WriteOutput: func(data []byte) error {
+					output = append([]byte(nil), data...)
+					return nil
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(output, original) {
+				t.Fatalf("round trip mismatch\n got: %q\nwant: %q", output, original)
+			}
+		})
 	}
 }
 
