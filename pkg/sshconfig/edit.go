@@ -13,8 +13,8 @@ func (d *Document) ReplaceDirective(id NodeID, keyword string, arguments ...stri
 	if d == nil {
 		return fmt.Errorf("sshconfig: nil document")
 	}
-	if keyword == "" {
-		return fmt.Errorf("sshconfig: directive keyword is empty")
+	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+		return err
 	}
 	index := d.nodeIndex(id)
 	if index < 0 {
@@ -50,8 +50,8 @@ func (d *Document) InsertDirectiveAfter(after NodeID, keyword string, arguments 
 	if d == nil {
 		return 0, fmt.Errorf("sshconfig: nil document")
 	}
-	if keyword == "" {
-		return 0, fmt.Errorf("sshconfig: directive keyword is empty")
+	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+		return 0, err
 	}
 	index := d.nodeIndex(after)
 	if index < 0 {
@@ -76,8 +76,8 @@ func (d *Document) AppendDirective(keyword string, arguments ...string) (NodeID,
 	if d == nil {
 		return 0, fmt.Errorf("sshconfig: nil document")
 	}
-	if keyword == "" {
-		return 0, fmt.Errorf("sshconfig: directive keyword is empty")
+	if err := validateDirectiveInput(keyword, arguments, ""); err != nil {
+		return 0, err
 	}
 	raw := d.renderNewDirective(keyword, arguments)
 	for i := len(d.nodes) - 1; i >= 0; i-- {
@@ -185,4 +185,24 @@ func syntheticDirective(keyword string, arguments []string) *Directive {
 		KeywordValue: strings.ToLower(keyword),
 		Arguments:    parsed,
 	}
+}
+
+func validateDirectiveInput(keyword string, arguments []string, comment string) error {
+	if keyword == "" {
+		return fmt.Errorf("sshconfig: directive keyword is empty")
+	}
+	for _, ch := range []byte(keyword) {
+		if ch <= ' ' || ch == 0x7f || ch == '=' || ch == '#' || ch == '\'' || ch == '"' {
+			return fmt.Errorf("sshconfig: directive keyword %q contains an invalid byte", keyword)
+		}
+	}
+	for index, argument := range arguments {
+		if strings.ContainsAny(argument, "\x00\r\n") {
+			return fmt.Errorf("sshconfig: directive argument %d contains NUL or a line ending", index)
+		}
+	}
+	if strings.ContainsAny(comment, "\x00\r\n") {
+		return fmt.Errorf("sshconfig: directive comment contains NUL or a line ending")
+	}
+	return nil
 }

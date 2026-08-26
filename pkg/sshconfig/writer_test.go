@@ -80,6 +80,26 @@ func TestEditErrors(t *testing.T) {
 	}
 }
 
+func TestDocumentEditsRejectCrossLineInput(t *testing.T) {
+	doc, _ := Parse([]byte("Host example\n"))
+	tests := []struct {
+		name string
+		edit func() error
+	}{
+		{name: "keyword newline", edit: func() error { return doc.ReplaceDirective(0, "Host\nProxyCommand", "example") }},
+		{name: "keyword comment", edit: func() error { return doc.ReplaceDirective(0, "#Host", "example") }},
+		{name: "argument newline", edit: func() error { return doc.ReplaceDirective(0, "Host", "safe\nProxyCommand command") }},
+		{name: "argument NUL", edit: func() error { _, err := doc.AppendDirective("Host", "safe\x00hidden"); return err }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if err := test.edit(); err == nil {
+				t.Fatal("edit accepted input that cannot fit in one physical directive")
+			}
+		})
+	}
+}
+
 func TestSaveAtomic(t *testing.T) {
 	t.Parallel()
 	directory := t.TempDir()
