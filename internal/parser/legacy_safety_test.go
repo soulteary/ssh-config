@@ -60,3 +60,26 @@ func TestGroupSSHConfigAcceptsRepresentableLegacyInput(t *testing.T) {
 		t.Fatalf("GroupSSHConfig() = %#v", configs)
 	}
 }
+
+func TestLegacyConversionPreservesQuotedAndHashArguments(t *testing.T) {
+	t.Parallel()
+
+	configs, err := Parser.GroupSSHConfig("Host example\n  IdentityFile \"/tmp/key with space\"\n  ControlPath /tmp/socket#one\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(Parser.ConvertToSSH(configs))
+	for _, want := range []string{`IdentityFile "/tmp/key with space"`, `ControlPath "/tmp/socket#one"`} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("ConvertToSSH() = %q, missing %q", got, want)
+		}
+	}
+
+	reparsed, err := Parser.GroupSSHConfig(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reparsed[0].Config["IdentityFile"] != "/tmp/key with space" || reparsed[0].Config["ControlPath"] != "/tmp/socket#one" {
+		t.Fatalf("round trip = %#v", reparsed[0].Config)
+	}
+}

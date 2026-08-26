@@ -16,7 +16,7 @@
 
 // Package lexer tokenizes SSH client configuration files.
 // Format follows OpenSSH ssh_config(5): https://man7.org/linux/man-pages/man5/ssh_config.5.html
-// - Comments: # to end of line; empty lines ignored.
+// - Comments: # at a token boundary to end of line; empty lines ignored.
 // - Keywords (Host, Match, Include) are case-insensitive; arguments are case-sensitive.
 // - Options separated by whitespace or optional whitespace and exactly one '='.
 // - Arguments containing spaces may be enclosed in double quotes; \" and \\ are escaped.
@@ -198,7 +198,7 @@ func (l *Lexer) NextToken() (Token, error) {
 			return l.emit(TokenEquals, "="), nil
 
 		default:
-			for l.peek() != 0 && l.peek() != '\n' && l.peek() != ' ' && l.peek() != '\t' && l.peek() != '\r' && l.peek() != '#' && l.peek() != '=' {
+			for l.peek() != 0 && l.peek() != '\n' && l.peek() != ' ' && l.peek() != '\t' && l.peek() != '\r' && l.peek() != '=' {
 				l.next()
 			}
 			word := l.slice()

@@ -99,13 +99,13 @@ func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string
 		}
 	}
 	output.WriteString("Host ")
-	output.WriteString(quoteArgument(name))
+	output.WriteString(QuoteArgument(name))
 	output.WriteByte('\n')
 	for _, key := range sortedMapKeys(config) {
 		output.WriteString("    ")
 		output.WriteString(key)
 		output.WriteByte(' ')
-		output.WriteString(quoteArgument(config[key]))
+		output.WriteString(QuoteArgument(config[key]))
 		output.WriteByte('\n')
 	}
 }

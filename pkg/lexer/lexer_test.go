@@ -439,15 +439,15 @@ func TestLex_WhitespaceOnlyLine(t *testing.T) {
 	}
 }
 
-func TestLex_WordThenCommentNoSpace(t *testing.T) {
-	// Word stops at # so "word#rest" gives Value "word" then Comment "rest"
+func TestLex_HashInsideWord(t *testing.T) {
+	// OpenSSH treats # as data when it is part of an unquoted argument.
 	input := "Host server#note\n"
 	tokens, err := Lex(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tokens[1].Value != "server" || tokens[2].Kind != TokenComment || tokens[2].Value != "note" {
-		t.Errorf("word#comment: got %v", tokens)
+	if tokens[1].Kind != TokenValue || tokens[1].Value != "server#note" || tokens[2].Kind != TokenNewline {
+		t.Errorf("hash inside word: got %v", tokens)
 	}
 }
 
