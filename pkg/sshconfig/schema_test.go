@@ -340,6 +340,15 @@ func TestMigrateLegacyYAMLRejectsDuplicateMergeOperands(t *testing.T) {
 	}
 }
 
+
+func TestMigrateLegacyYAMLRejectsQuotedMergeKeyAsUnknownField(t *testing.T) {
+	t.Parallel()
+	input := []byte("Group work:\n  \"<<\": {}\n")
+	if _, err := MigrateLegacyYAML(input, "config"); err == nil || !strings.Contains(err.Error(), "unknown YAML field") {
+		t.Fatalf("MigrateLegacyYAML() error = %v, want unknown field error", err)
+	}
+}
+
 func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []byte) {
 	t.Helper()
 	doc, err := schema.Document(path)
