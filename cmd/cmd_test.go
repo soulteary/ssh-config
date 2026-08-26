@@ -272,11 +272,12 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "Set all flags",
-			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-legacy", "-src", "source.txt", "-dest", "destination.txt", "-help", "-version"},
+			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-lossless", "-legacy", "-src", "source.txt", "-dest", "destination.txt", "-help", "-version"},
 			expected: Cmd.Args{
 				ToYAML:   true,
 				ToSSH:    true,
 				ToJSON:   true,
+				Lossless: true,
 				Legacy:   true,
 				Src:      "source.txt",
 				Dest:     "destination.txt",
@@ -364,6 +365,9 @@ func TestResetFlags(t *testing.T) {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 	if result.ToYAML != expected.ToYAML {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.Lossless != expected.Lossless {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 	if result.Legacy != expected.Legacy {
