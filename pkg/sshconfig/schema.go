@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
+	"slices"
 	"unicode/utf8"
 
 	"gopkg.in/yaml.v2"
@@ -293,7 +293,9 @@ func schemaRawMatchesDirective(raw []byte, expected *SchemaDirective) bool {
 	if directive.Comment != nil {
 		actual.Comment = string(doc.source[directive.Comment.Span.Start:directive.Comment.Span.End])
 	}
-	return reflect.DeepEqual(actual, expected)
+	return actual.Keyword == expected.Keyword &&
+		actual.Comment == expected.Comment &&
+		slices.Equal(actual.Arguments, expected.Arguments)
 }
 
 func renderSchemaDirective(directive *SchemaDirective, lineEnding string, defaultLineEnding bool) []byte {
