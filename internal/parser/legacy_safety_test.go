@@ -32,6 +32,28 @@ func TestGroupStructuredConfigRejectsCrossLineFields(t *testing.T) {
 	}
 }
 
+func TestGroupYAMLConfigAppliesInheritanceToEmptyHost(t *testing.T) {
+	t.Parallel()
+	input := `default:
+  User: alice
+Group work:
+  Common:
+    Port: "22"
+  Hosts:
+    example: {}
+`
+	configs, err := Parser.GroupYAMLConfigStrict(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs) != 1 {
+		t.Fatalf("GroupYAMLConfigStrict() returned %d hosts, want 1", len(configs))
+	}
+	if configs[0].Name != "example" || configs[0].Config["User"] != "alice" || configs[0].Config["Port"] != "22" {
+		t.Fatalf("inherited host = %#v", configs[0])
+	}
+}
+
 func TestGroupSSHConfigRejectsLossyLegacyInputs(t *testing.T) {
 	t.Parallel()
 
@@ -95,5 +117,63 @@ func TestLegacyConversionPreservesQuotedAndHashArguments(t *testing.T) {
 	}
 	if reparsed[0].Config["IdentityFile"] != "/tmp/key with space" || reparsed[0].Config["ControlPath"] != "/tmp/socket#one" {
 		t.Fatalf("round trip = %#v", reparsed[0].Config)
+	}
+}
+
+func TestLegacyRoundTripPreservesHostOrder(t *testing.T) {
+	t.Parallel()
+
+	input := "Host special.example.com\n  User special\nHost *.example.com\n  User wildcard\n"
+	configs, err := Parser.GroupSSHConfig(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	yamlData := Parser.ConvertToYAML(configs)
+	fromYAML, err := Parser.GroupYAMLConfigStrict(string(yamlData))
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(Parser.ConvertToSSH(fromYAML))
+	special := strings.Index(output, "Host special.example.com")
+	wildcard := strings.Index(output, "Host *.example.com")
+	if special < 0 || wildcard < 0 || special > wildcard {
+		t.Fatalf("host order changed:\n%s", output)
+	}
+}
+
+func TestLegacyYAMLPreservesHostsMappingOrder(t *testing.T) {
+	t.Parallel()
+
+	input := "Group work:\n  Hosts:\n    z-host:\n      config:\n        User: z\n    a-host:\n      config:\n        User: a\n"
+	configs, err := Parser.GroupYAMLConfigStrict(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(Parser.ConvertToSSH(configs))
+	if strings.Index(output, "Host z-host") > strings.Index(output, "Host a-host") {
+		t.Fatalf("host order changed:\n%s", output)
+	}
+}
+
+func TestLegacyYAMLPreservesMergedHostsOrder(t *testing.T) {
+	t.Parallel()
+
+	input := `Group template: &group
+  Hosts:
+    z-host:
+      config:
+        User: z
+    a-host:
+      config:
+        User: a
+Group inherited:
+  <<: *group
+`
+	configs, err := Parser.GroupYAMLConfigStrict(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs) != 4 || configs[2].Name != "z-host" || configs[3].Name != "a-host" {
+		t.Fatalf("merged host order = %#v", configs)
 	}
 }
