@@ -108,7 +108,7 @@ ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
-为保持兼容，默认仍使用原有 YAML/JSON 格式。无损模式能够导入旧格式，但无法恢复已经被旧 map 结构丢弃的顺序和重复值。
+为保持兼容，默认仍使用原有 YAML/JSON 格式。无损模式能够导入旧格式并保留 YAML 中 Group 和 Host 的源顺序，但无法恢复旧 map 结构未表达的重复值和指令顺序。
 
 字段结构、字节保持规则、编辑行为、Go API 示例和旧格式迁移边界详见 [v3 无损格式规范](./docs/lossless-schema-v3.md)。
 

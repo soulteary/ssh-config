@@ -37,6 +37,10 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 	if err := ValidateLegacyYAML(data); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
 	}
+	order, err := legacyYAMLSourceOrder(data)
+	if err != nil {
+		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML order: %w", err)
+	}
 	if err := yaml.Unmarshal(data, &legacy); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
 	}
@@ -44,10 +48,10 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 	if err := writeLegacyHost(&output, "*", "", legacy.Global); err != nil {
 		return Schema{}, err
 	}
-	groupNames := sortedMapKeys(legacy.Groups)
+	groupNames := orderedLegacyMapKeys(order.groups, legacy.Groups)
 	for _, groupName := range groupNames {
 		group := legacy.Groups[groupName]
-		hostNames := sortedMapKeys(group.Hosts)
+		hostNames := orderedLegacyMapKeys(order.hosts[groupName], group.Hosts)
 		for _, hostName := range hostNames {
 			host := group.Hosts[hostName]
 			config := cloneStringMap(host.Config)
@@ -62,6 +66,73 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 		}
 	}
 	return schemaFromLegacyBytes(output.Bytes(), path)
+}
+
+type legacyYAMLOrder struct {
+	groups []string
+	hosts  map[string][]string
+}
+
+func legacyYAMLSourceOrder(data []byte) (legacyYAMLOrder, error) {
+	order := legacyYAMLOrder{hosts: make(map[string][]string)}
+	var document yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		return order, err
+	}
+	if len(document.Content) == 0 {
+		return order, nil
+	}
+	groups, err := legacyYAMLMappingEntries(document.Content[0], "document")
+	if err != nil {
+		return order, err
+	}
+	for _, group := range groups {
+		groupName := group.key.Value
+		if groupName == "global" || groupName == "default" {
+			continue
+		}
+		order.groups = append(order.groups, groupName)
+		fields, err := legacyYAMLMappingEntries(group.value, groupName)
+		if err != nil {
+			return order, err
+		}
+		for _, field := range fields {
+			if field.key.Value != "Hosts" {
+				continue
+			}
+			hosts, err := legacyYAMLMappingEntries(field.value, groupName+".Hosts")
+			if err != nil {
+				return order, err
+			}
+			for _, host := range hosts {
+				order.hosts[groupName] = append(order.hosts[groupName], host.key.Value)
+			}
+		}
+	}
+	return order, nil
+}
+
+func orderedLegacyMapKeys[V any](preferred []string, values map[string]V) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, key := range preferred {
+		if _, exists := values[key]; !exists {
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, key)
+	}
+	missing := make([]string, 0, len(values)-len(result))
+	for key := range values {
+		if _, exists := seen[key]; !exists {
+			missing = append(missing, key)
+		}
+	}
+	sort.Strings(missing)
+	return append(result, missing...)
 }
 
 // MigrateLegacyJSON converts the previous host-array JSON format into v3.
