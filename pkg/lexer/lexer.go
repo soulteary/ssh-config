@@ -92,6 +92,7 @@ type Lexer struct {
 	startLine   int
 	startCol    int
 	atLineStart bool
+	allowEquals bool
 }
 
 // NewLexer returns a lexer for the given input.
@@ -148,6 +149,7 @@ func (l *Lexer) NextToken() (Token, error) {
 		case r == '\n':
 			l.next()
 			l.atLineStart = true
+			l.allowEquals = false
 			return l.emit(TokenNewline, "\n"), nil
 
 		case r == ' ' || r == '\t' || r == '\r':
@@ -164,38 +166,18 @@ func (l *Lexer) NextToken() (Token, error) {
 			comment := strings.TrimSpace(l.slice()[1:])
 			return l.emit(TokenComment, comment), nil
 
-		case r == '"':
-			l.next()
-			var b strings.Builder
-			for {
-				r = l.peek()
-				if r == 0 {
-					return Token{}, fmt.Errorf("unclosed quoted string at line %d column %d", l.line, l.col)
-				}
-				if r == '"' {
-					l.next()
-					break
-				}
-				if r == '\\' {
-					l.next()
-					r = l.peek()
-					if r == '"' || r == '\\' {
-						l.next()
-						b.WriteRune(r)
-					} else {
-						b.WriteRune('\\')
-					}
-					continue
-				}
-				l.next()
-				b.WriteRune(r)
-			}
-			return l.emit(TokenQuoted, b.String()), nil
-
-		case r == '=':
+		case r == '=' && l.allowEquals:
 			l.next()
 			l.atLineStart = false
+			l.allowEquals = false
 			return l.emit(TokenEquals, "="), nil
+
+		case r == '\'' || r == '"':
+			l.atLineStart = false
+			return l.scanArgument()
+
+		case !l.atLineStart:
+			return l.scanArgument()
 
 		default:
 			for l.peek() != 0 && l.peek() != '\n' && l.peek() != ' ' && l.peek() != '\t' && l.peek() != '\r' && l.peek() != '=' {
@@ -206,6 +188,7 @@ func (l *Lexer) NextToken() (Token, error) {
 
 			atStart := l.atLineStart
 			l.atLineStart = false
+			l.allowEquals = true
 
 			if atStart {
 				lower := strings.ToLower(word)
@@ -217,6 +200,53 @@ func (l *Lexer) NextToken() (Token, error) {
 			return l.emit(TokenValue, word), nil
 		}
 	}
+}
+
+func (l *Lexer) scanArgument() (Token, error) {
+	var value strings.Builder
+	quote := rune(0)
+	quoted := false
+	l.allowEquals = false
+	for {
+		r := l.peek()
+		if r == 0 || quote == 0 && (r == '\n' || r == ' ' || r == '\t' || r == '\r') {
+			break
+		}
+		if r == '\\' {
+			l.next()
+			next := l.peek()
+			if next == '\\' || next == '\'' || next == '"' || quote == 0 && next == ' ' {
+				l.next()
+				value.WriteRune(next)
+			} else {
+				value.WriteRune('\\')
+			}
+			continue
+		}
+		if r == '\'' || r == '"' {
+			if quote == 0 {
+				quote = r
+				quoted = true
+				l.next()
+				continue
+			}
+			if quote == r {
+				quote = 0
+				l.next()
+				continue
+			}
+		}
+		l.next()
+		value.WriteRune(r)
+	}
+	if quote != 0 {
+		return Token{}, fmt.Errorf("unclosed quoted string at line %d column %d", l.line, l.col)
+	}
+	kind := TokenValue
+	if quoted {
+		kind = TokenQuoted
+	}
+	return l.emit(kind, value.String()), nil
 }
 
 // Lex returns all tokens from input. Stops on first error (e.g. unclosed quote).

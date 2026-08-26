@@ -120,6 +120,32 @@ func TestLegacyConversionPreservesQuotedAndHashArguments(t *testing.T) {
 	}
 }
 
+func TestLegacyConversionPreservesMixedQuotedArguments(t *testing.T) {
+	t.Parallel()
+
+	input := "Host example\n  IdentityFile /tmp/key\" with \"'space'\n  ProxyCommand env FOO=bar ssh -W %h:%p \"jump host\"\n"
+	configs, err := Parser.GroupSSHConfig(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := configs[0].Config["IdentityFile"]; got != "/tmp/key with space" {
+		t.Fatalf("IdentityFile = %q", got)
+	}
+	if got := configs[0].Config["ProxyCommand"]; got != "env FOO=bar ssh -W %h:%p jump host" {
+		t.Fatalf("ProxyCommand = %q", got)
+	}
+
+	output := string(Parser.ConvertToSSH(configs))
+	reparsed, err := Parser.GroupSSHConfig(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reparsed[0].Config["IdentityFile"] != configs[0].Config["IdentityFile"] ||
+		reparsed[0].Config["ProxyCommand"] != configs[0].Config["ProxyCommand"] {
+		t.Fatalf("round trip changed arguments:\n%s", output)
+	}
+}
+
 func TestLegacyRoundTripPreservesHostOrder(t *testing.T) {
 	t.Parallel()
 
