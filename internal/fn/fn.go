@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -85,7 +86,7 @@ func GetYamlData(input string) (yamlConfig Define.YAMLOutput) {
 // GetYamlDataStrict decodes the legacy YAML format without hiding syntax or
 // type errors from callers that must avoid destructive conversions.
 func GetYamlDataStrict(input string) (yamlConfig Define.YAMLOutput, err error) {
-	err = yaml.Unmarshal([]byte(input), &yamlConfig)
+	err = yaml.UnmarshalStrict([]byte(input), &yamlConfig)
 	return yamlConfig, err
 }
 
@@ -106,10 +107,24 @@ func GetJSONData(input string) (jsonConfig []Define.HostConfigForJSON) {
 	return jsonConfig
 }
 
-// GetJSONDataStrict decodes the legacy JSON format without hiding errors.
+// GetJSONDataStrict decodes exactly one legacy JSON document and rejects
+// unknown fields.
 func GetJSONDataStrict(input string) (jsonConfig []Define.HostConfigForJSON, err error) {
-	err = json.Unmarshal([]byte(input), &jsonConfig)
-	return jsonConfig, err
+	decoder := json.NewDecoder(strings.NewReader(input))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&jsonConfig); err != nil {
+		return jsonConfig, err
+	}
+
+	var trailing json.RawMessage
+	switch err := decoder.Decode(&trailing); err {
+	case io.EOF:
+		return jsonConfig, nil
+	case nil:
+		return jsonConfig, fmt.Errorf("unexpected JSON value after document")
+	default:
+		return jsonConfig, fmt.Errorf("invalid trailing JSON data: %w", err)
+	}
 }
 
 func DetectStringType(input string) string {
