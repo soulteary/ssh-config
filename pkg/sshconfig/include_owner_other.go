@@ -2,9 +2,16 @@
 
 package sshconfig
 
-import "io/fs"
+import (
+	"io/fs"
+	"os"
+)
 
-// Non-Unix platforms do not expose OpenSSH's uid ownership model.
-func checkIncludeOwner(fs.FileInfo, string) error {
+func openIncludeFile(path string) (*os.File, error) {
+	return os.Open(path)
+}
+
+// Non-Unix platforms do not expose OpenSSH's uid ownership and mode model.
+func checkIncludePlatformPermissions(fs.FileInfo, string) error {
 	return nil
 }
