@@ -23,6 +23,7 @@ import (
 	Define "github.com/soulteary/ssh-config/v2/internal/define"
 	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 	"gopkg.in/yaml.v2"
+	yamlv3 "gopkg.in/yaml.v3"
 )
 
 // mapToMapSlice 将 map[string]string 转为按 key 排序的 yaml.MapSlice，保证输出顺序稳定。
@@ -101,7 +102,6 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 			}
 			groupsData[groupName] = groupItems
 		}
-		slices.Sort(groupNames)
 		for _, groupName := range groupNames {
 			root = append(root, yaml.MapItem{Key: groupName, Value: groupsData[groupName]})
 		}
@@ -145,11 +145,8 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 	}
 
 	if yamlConfig.Groups != nil {
-		keys := make([]string, 0)
-		for key := range yamlConfig.Groups {
-			keys = append(keys, key)
-		}
-		slices.Sort(keys)
+		groupOrder := legacyYAMLGroupOrder(input)
+		keys := orderedLegacyKeys(groupOrder.groups, yamlConfig.Groups)
 
 		for _, groupName := range keys {
 			groupConfig := yamlConfig.Groups[groupName]
@@ -159,11 +156,7 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 				prefix = groupConfig.Prefix
 			}
 
-			hostNames := make([]string, 0, len(groupConfig.Hosts))
-			for hostName := range groupConfig.Hosts {
-				hostNames = append(hostNames, hostName)
-			}
-			slices.Sort(hostNames)
+			hostNames := orderedLegacyKeys(groupOrder.hosts[groupName], groupConfig.Hosts)
 
 			for _, hostName := range hostNames {
 				originConfig := groupConfig.Hosts[hostName]
@@ -196,4 +189,139 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 		return nil, err
 	}
 	return hostConfigs, nil
+}
+
+type yamlOrder struct {
+	groups []string
+	hosts  map[string][]string
+}
+
+func legacyYAMLGroupOrder(input string) yamlOrder {
+	order := yamlOrder{hosts: make(map[string][]string)}
+	var document yamlv3.Node
+	if err := yamlv3.Unmarshal([]byte(input), &document); err != nil || len(document.Content) == 0 {
+		return order
+	}
+	for _, group := range resolvedYAMLMapping(document.Content[0], make(map[*yamlv3.Node]bool)) {
+		groupName := group.key.Value
+		if groupName == "global" || groupName == "default" {
+			continue
+		}
+		order.groups = append(order.groups, groupName)
+		for _, field := range resolvedYAMLMapping(group.value, make(map[*yamlv3.Node]bool)) {
+			if field.key.Value != "Hosts" {
+				continue
+			}
+			for _, host := range resolvedYAMLMapping(field.value, make(map[*yamlv3.Node]bool)) {
+				order.hosts[groupName] = append(order.hosts[groupName], host.key.Value)
+			}
+		}
+	}
+	return order
+}
+
+type yamlNodeEntry struct {
+	key   *yamlv3.Node
+	value *yamlv3.Node
+}
+
+func resolvedYAMLMapping(node *yamlv3.Node, visiting map[*yamlv3.Node]bool) []yamlNodeEntry {
+	node = dereferenceYAMLAlias(node)
+	if node == nil || node.Kind != yamlv3.MappingNode || visiting[node] {
+		return nil
+	}
+	visiting[node] = true
+	defer delete(visiting, node)
+
+	explicit := make(map[string]struct{})
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key := node.Content[index]
+		if !isYAMLMergeKey(key) {
+			explicit[key.Value] = struct{}{}
+		}
+	}
+
+	result := make([]yamlNodeEntry, 0, len(node.Content)/2)
+	seen := make(map[string]struct{})
+	appendEntry := func(entry yamlNodeEntry, merged bool) {
+		name := entry.key.Value
+		if merged {
+			if _, overridden := explicit[name]; overridden {
+				return
+			}
+		}
+		if _, exists := seen[name]; exists {
+			return
+		}
+		seen[name] = struct{}{}
+		result = append(result, entry)
+	}
+
+	for index := 0; index+1 < len(node.Content); index += 2 {
+		key, value := node.Content[index], node.Content[index+1]
+		if !isYAMLMergeKey(key) {
+			appendEntry(yamlNodeEntry{key: key, value: value}, false)
+			continue
+		}
+		for _, entry := range resolvedYAMLMerge(value, visiting) {
+			appendEntry(entry, true)
+		}
+	}
+	return result
+}
+
+func resolvedYAMLMerge(node *yamlv3.Node, visiting map[*yamlv3.Node]bool) []yamlNodeEntry {
+	node = dereferenceYAMLAlias(node)
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yamlv3.SequenceNode {
+		var result []yamlNodeEntry
+		seen := make(map[string]struct{})
+		for _, item := range node.Content {
+			for _, entry := range resolvedYAMLMapping(item, visiting) {
+				if _, exists := seen[entry.key.Value]; exists {
+					continue
+				}
+				seen[entry.key.Value] = struct{}{}
+				result = append(result, entry)
+			}
+		}
+		return result
+	}
+	return resolvedYAMLMapping(node, visiting)
+}
+
+func dereferenceYAMLAlias(node *yamlv3.Node) *yamlv3.Node {
+	for node != nil && node.Kind == yamlv3.AliasNode {
+		node = node.Alias
+	}
+	return node
+}
+
+func isYAMLMergeKey(node *yamlv3.Node) bool {
+	return node != nil && node.Tag == "!!merge"
+}
+
+func orderedLegacyKeys[V any](preferred []string, values map[string]V) []string {
+	result := make([]string, 0, len(values))
+	seen := make(map[string]struct{}, len(values))
+	for _, key := range preferred {
+		if _, exists := values[key]; !exists {
+			continue
+		}
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, key)
+	}
+	missing := make([]string, 0, len(values)-len(result))
+	for key := range values {
+		if _, exists := seen[key]; !exists {
+			missing = append(missing, key)
+		}
+	}
+	slices.Sort(missing)
+	return append(result, missing...)
 }
