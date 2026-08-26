@@ -5,7 +5,11 @@ import "fmt"
 // Parse constructs a lossless syntax document. Unknown or malformed lines are
 // retained. Malformed quoting is reported through Document.Diagnostics.
 func Parse(input []byte) (*Document, error) {
-	doc := &Document{source: append([]byte(nil), input...)}
+	doc := &Document{
+		source:      append([]byte(nil), input...),
+		replacement: make(map[NodeID][]byte),
+		removed:     make(map[NodeID]bool),
+	}
 	line, offset := 1, 0
 	for offset < len(doc.source) {
 		contentEnd, lineEnd := scanLine(doc.source, offset)
@@ -17,6 +21,7 @@ func Parse(input []byte) (*Document, error) {
 		offset = lineEnd
 		line++
 	}
+	doc.nextID = NodeID(len(doc.nodes))
 	return doc, nil
 }
 
@@ -78,6 +83,7 @@ func parseLine(doc *Document, id NodeID, line, start, contentEnd, lineEnd int) N
 	directive.Arguments, directive.Comment, malformed = parseArguments(doc, line, start, i, contentEnd)
 	node.Kind = NodeDirective
 	node.Directive = directive
+	node.original = directive
 	if malformed {
 		node.Kind = NodeInvalid
 	}
