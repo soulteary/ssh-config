@@ -246,6 +246,7 @@ func TestMainWithDependencies(t *testing.T) {
 		name           string
 		args           []string
 		expectedOutput string
+		expectedError  string
 		expectedExit   int
 		mockHomeDir    func() (string, error)
 	}{
@@ -264,19 +265,37 @@ func TestMainWithDependencies(t *testing.T) {
 			mockHomeDir:    os.UserHomeDir,
 		},
 		{
-			name:           "Error execution",
-			args:           []string{"cmd", "--to-json", "--to-yaml"}, // Invalid args
-			expectedOutput: "Please specify either -to-yaml or -to-ssh or -to-json\n",
-			expectedExit:   1,
-			mockHomeDir:    os.UserHomeDir,
+			name:          "Error execution",
+			args:          []string{"cmd", "--to-json", "--to-yaml"}, // Invalid args
+			expectedError: "Please specify either -to-yaml or -to-ssh or -to-json\n",
+			expectedExit:  1,
+			mockHomeDir:   os.UserHomeDir,
 		},
 		{
-			name:           "Home directory error",
-			args:           []string{"cmd"}, // No src specified, will try to use home dir
-			expectedOutput: "Error: getting user home directory: mock home dir error\nError: Source path '.ssh' does not exist\n",
-			expectedExit:   1,
+			name:          "Home directory error",
+			args:          []string{"cmd"}, // No src specified, will try to use home dir
+			expectedError: "Error: getting user home directory: mock home dir error\n",
+			expectedExit:  1,
 			mockHomeDir: func() (string, error) {
 				return "", errors.New("mock home dir error")
+			},
+		},
+		{
+			name:           "Help exits before IO",
+			args:           []string{"cmd", "-help"},
+			expectedOutput: Cmd.Usage,
+			expectedExit:   0,
+			mockHomeDir: func() (string, error) {
+				return "", errors.New("home must not be queried")
+			},
+		},
+		{
+			name:           "Version exits before IO",
+			args:           []string{"cmd", "-version"},
+			expectedOutput: versionText(),
+			expectedExit:   0,
+			mockHomeDir: func() (string, error) {
+				return "", errors.New("home must not be queried")
 			},
 		},
 	}
@@ -291,23 +310,30 @@ func TestMainWithDependencies(t *testing.T) {
 			}
 
 			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
+			stdoutR, stdoutW, _ := os.Pipe()
+			oldStderr := os.Stderr
+			stderrR, stderrW, _ := os.Pipe()
+			os.Stdout = stdoutW
+			os.Stderr = stderrW
 
 			MainWithDependencies(exitFunc, tt.mockHomeDir)
 			Cmd.ResetFlags()
 
-			w.Close()
+			stdoutW.Close()
+			stderrW.Close()
 			os.Stdout = oldStdout
+			os.Stderr = oldStderr
 
-			var buf bytes.Buffer
-			io.Copy(&buf, r)
-			output := buf.String()
+			var stdout, stderr bytes.Buffer
+			io.Copy(&stdout, stdoutR)
+			io.Copy(&stderr, stderrR)
+			output := stdout.String()
 
 			if output != tt.expectedOutput {
-				if tt.name != "Error execution" {
-					t.Errorf("Output = %q, want %q", output, tt.expectedOutput)
-				}
+				t.Errorf("Output = %q, want %q", output, tt.expectedOutput)
+			}
+			if got := stderr.String(); got != tt.expectedError {
+				t.Errorf("Stderr = %q, want %q", got, tt.expectedError)
 			}
 
 			if exitCode != tt.expectedExit {
