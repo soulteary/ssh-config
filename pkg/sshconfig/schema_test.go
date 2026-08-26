@@ -232,6 +232,33 @@ func TestSchemaStrictValidation(t *testing.T) {
 	}
 }
 
+func TestSchemaDocumentPathSelection(t *testing.T) {
+	t.Parallel()
+
+	single := NewSchema(SchemaDocument{})
+	if _, err := single.Document(""); err != nil {
+		t.Fatalf("single document with empty path was not selectable: %v", err)
+	}
+
+	for _, documents := range [][]SchemaDocument{
+		{{}, {}},
+		{{}, {Path: "config.d/work"}},
+	} {
+		schema := NewSchema(documents...)
+		if err := schema.Validate(); err == nil || !strings.Contains(err.Error(), "empty path in a multi-document schema") {
+			t.Fatalf("Validate() error = %v, want empty multi-document path error", err)
+		}
+	}
+
+	multiple := NewSchema(
+		SchemaDocument{Path: "config"},
+		SchemaDocument{Path: "config.d/work"},
+	)
+	if _, err := multiple.Document(""); err == nil || !strings.Contains(err.Error(), "requires exactly one schema document") {
+		t.Fatalf("Document(\"\") error = %v, want ambiguous selector error", err)
+	}
+}
+
 func TestSchemaYAMLMergeExplicitValuesWin(t *testing.T) {
 	t.Parallel()
 	inputs := []string{

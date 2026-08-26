@@ -89,14 +89,20 @@ func NewSchema(documents ...SchemaDocument) Schema {
 	return Schema{SchemaVersion: SchemaVersion, Documents: documents}
 }
 
-// Document reconstructs one schema document. An empty path selects the first
-// document when the schema contains exactly one document.
+// Document reconstructs one schema document. An empty path selects the
+// document only when the schema contains exactly one document.
 func (s Schema) Document(path string) (*Document, error) {
 	if err := s.Validate(); err != nil {
 		return nil, err
 	}
+	if path == "" {
+		if len(s.Documents) != 1 {
+			return nil, fmt.Errorf("sshconfig: an empty document path requires exactly one schema document")
+		}
+		return s.Documents[0].Document()
+	}
 	for _, document := range s.Documents {
-		if document.Path == path || path == "" && len(s.Documents) == 1 {
+		if document.Path == path {
 			return document.Document()
 		}
 	}
@@ -137,12 +143,13 @@ func (s Schema) Validate() error {
 	}
 	seen := make(map[string]bool)
 	for index, document := range s.Documents {
-		if document.Path != "" {
-			if seen[document.Path] {
-				return fmt.Errorf("sshconfig: duplicate schema document path %q", document.Path)
-			}
-			seen[document.Path] = true
+		if len(s.Documents) > 1 && document.Path == "" {
+			return fmt.Errorf("sshconfig: document %d has an empty path in a multi-document schema", index)
 		}
+		if seen[document.Path] {
+			return fmt.Errorf("sshconfig: duplicate schema document path %q", document.Path)
+		}
+		seen[document.Path] = true
 		for nodeIndex, node := range document.Nodes {
 			switch node.Type {
 			case "blank", "comment", "directive", "invalid":
