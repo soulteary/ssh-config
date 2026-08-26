@@ -82,10 +82,13 @@ func looksLikeStructuredYAML(data []byte) bool {
 			continue
 		}
 		lower := strings.ToLower(line)
-		return strings.HasPrefix(lower, "schemaversion:") ||
+		if strings.HasPrefix(lower, "schemaversion:") ||
+			strings.HasPrefix(lower, "documents:") ||
 			strings.HasPrefix(lower, "global:") ||
 			strings.HasPrefix(lower, "default:") ||
-			(strings.HasPrefix(lower, "group ") && strings.Contains(line, ":"))
+			(strings.HasPrefix(lower, "group ") && strings.Contains(line, ":")) {
+			return true
+		}
 	}
 	return false
 }
