@@ -86,7 +86,11 @@ func GetYamlData(input string) (yamlConfig Define.YAMLOutput) {
 // GetYamlDataStrict decodes the legacy YAML format without hiding syntax or
 // type errors from callers that must avoid destructive conversions.
 func GetYamlDataStrict(input string) (yamlConfig Define.YAMLOutput, err error) {
-	err = yaml.UnmarshalStrict([]byte(input), &yamlConfig)
+	data := []byte(input)
+	if err := validateLegacyYAML(data); err != nil {
+		return yamlConfig, err
+	}
+	err = yaml.Unmarshal(data, &yamlConfig)
 	return yamlConfig, err
 }
 
