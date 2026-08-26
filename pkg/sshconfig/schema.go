@@ -60,7 +60,11 @@ func (d *Document) ToSchema(path string) (SchemaDocument, error) {
 			Type:      schemaNodeType(node.Kind),
 			RawBase64: base64.StdEncoding.EncodeToString(raw),
 		}
-		if node.Directive != nil && utf8.Valid(raw) {
+		// Invalid nodes may carry a partially parsed Directive internally so
+		// diagnostics can point at tokens. They must remain raw-only in the
+		// schema: exposing an incomplete editable view violates the node shape
+		// contract and can discard the malformed bytes when reconstructed.
+		if node.Kind == NodeDirective && node.Directive != nil && utf8.Valid(raw) {
 			directive := node.Directive
 			arguments := make([]string, 0, len(directive.Arguments))
 			for _, argument := range directive.Arguments {
@@ -118,7 +122,7 @@ func (s SchemaDocument) Document() (*Document, error) {
 			output.Write(raw)
 			continue
 		}
-		output.Write(renderSchemaDirective(node.Directive, detectLineEnding(raw)))
+		output.Write(renderSchemaDirective(node.Directive, detectLineEnding(raw), len(raw) == 0))
 	}
 	return Parse(output.Bytes())
 }
@@ -262,8 +266,8 @@ func schemaRawMatchesDirective(raw []byte, expected *SchemaDirective) bool {
 	return reflect.DeepEqual(actual, expected)
 }
 
-func renderSchemaDirective(directive *SchemaDirective, lineEnding string) []byte {
-	if lineEnding == "" {
+func renderSchemaDirective(directive *SchemaDirective, lineEnding string, defaultLineEnding bool) []byte {
+	if lineEnding == "" && defaultLineEnding {
 		lineEnding = "\n"
 	}
 	var output bytes.Buffer
