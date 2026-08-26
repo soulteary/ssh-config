@@ -100,6 +100,20 @@ func TestNodesReturnsIndependentSyntax(t *testing.T) {
 	}
 }
 
+func TestNodesPreservesNonNilEmptyArguments(t *testing.T) {
+	t.Parallel()
+	doc, err := Parse(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := doc.AppendDirective("Host"); err != nil {
+		t.Fatal(err)
+	}
+	if arguments := doc.Nodes()[0].Directive.Arguments; arguments == nil || len(arguments) != 0 {
+		t.Fatalf("Arguments = %#v, want a non-nil empty slice", arguments)
+	}
+}
+
 func TestMalformedQuoteIsRetainedAndDiagnosed(t *testing.T) {
 	t.Parallel()
 	input := []byte("Host \"unfinished\n")

@@ -124,7 +124,9 @@ func cloneDirective(directive *Directive) *Directive {
 		return nil
 	}
 	clone := *directive
-	clone.Arguments = append([]Argument(nil), directive.Arguments...)
+	if directive.Arguments != nil {
+		clone.Arguments = append([]Argument{}, directive.Arguments...)
+	}
 	if directive.Comment != nil {
 		comment := *directive.Comment
 		clone.Comment = &comment
