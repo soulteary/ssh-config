@@ -138,5 +138,4 @@ type HostConfig struct {
 
 	YamlUserNotes string `yaml:"YamlUserNotes,omitempty"`
 	YamlUserHost  string `yaml:"YamlUserHost,omitempty"`
-	YamlTested    string `yaml` // this is a placeholder for the test
 }
