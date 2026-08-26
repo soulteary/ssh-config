@@ -152,6 +152,11 @@ func (s Schema) Validate() error {
 			if node.Directive != nil && node.Directive.Keyword == "" {
 				return fmt.Errorf("sshconfig: document %d node %d has an empty keyword", index, nodeIndex)
 			}
+			if node.Directive != nil {
+				if err := validateDirectiveInput(node.Directive.Keyword, node.Directive.Arguments, node.Directive.Comment); err != nil {
+					return fmt.Errorf("sshconfig: document %d node %d: %w", index, nodeIndex, err)
+				}
+			}
 			if node.Type == "directive" && node.Directive == nil && node.RawBase64 == "" {
 				return fmt.Errorf("sshconfig: document %d node %d has no directive or raw bytes", index, nodeIndex)
 			}

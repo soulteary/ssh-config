@@ -208,6 +208,22 @@ func TestSchemaStrictValidation(t *testing.T) {
 	}
 }
 
+func TestSchemaRejectsCrossLineDirectiveFields(t *testing.T) {
+	t.Parallel()
+	tests := []SchemaDirective{
+		{Keyword: "Host\nProxyCommand", Arguments: []string{"example"}},
+		{Keyword: "Host", Arguments: []string{"example\rUser root"}},
+		{Keyword: "Host", Arguments: []string{"example"}, Comment: "# note\nProxyCommand command"},
+	}
+	for _, directive := range tests {
+		directive := directive
+		schema := NewSchema(SchemaDocument{Nodes: []SchemaNode{{Type: "directive", Directive: &directive}}})
+		if err := schema.Validate(); err == nil {
+			t.Fatalf("Validate() accepted cross-line directive: %+v", directive)
+		}
+	}
+}
+
 func TestMigrateLegacyFormats(t *testing.T) {
 	t.Parallel()
 	legacyYAML := []byte(`global:
