@@ -32,6 +32,28 @@ func TestGroupStructuredConfigRejectsCrossLineFields(t *testing.T) {
 	}
 }
 
+func TestGroupYAMLConfigAppliesInheritanceToEmptyHost(t *testing.T) {
+	t.Parallel()
+	input := `default:
+  User: alice
+Group work:
+  Common:
+    Port: "22"
+  Hosts:
+    example: {}
+`
+	configs, err := Parser.GroupYAMLConfigStrict(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs) != 1 {
+		t.Fatalf("GroupYAMLConfigStrict() returned %d hosts, want 1", len(configs))
+	}
+	if configs[0].Name != "example" || configs[0].Config["User"] != "alice" || configs[0].Config["Port"] != "22" {
+		t.Fatalf("inherited host = %#v", configs[0])
+	}
+}
+
 func TestGroupSSHConfigRejectsLossyLegacyInputs(t *testing.T) {
 	t.Parallel()
 
