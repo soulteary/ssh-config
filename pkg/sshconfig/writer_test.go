@@ -2,6 +2,8 @@ package sshconfig
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -129,5 +131,96 @@ func TestSaveAtomicRejectsSymlink(t *testing.T) {
 	got, err := os.ReadFile(target)
 	if err != nil || string(got) != "unchanged" {
 		t.Fatalf("target changed: %q, %v", got, err)
+	}
+}
+
+type failingAtomicFile struct {
+	*os.File
+	failure string
+}
+
+func (f *failingAtomicFile) Chmod(mode fs.FileMode) error {
+	if f.failure == "chmod" {
+		return errors.New("injected chmod failure")
+	}
+	return f.File.Chmod(mode)
+}
+
+func (f *failingAtomicFile) Write(data []byte) (int, error) {
+	if f.failure == "write" {
+		return 0, errors.New("injected write failure")
+	}
+	return f.File.Write(data)
+}
+
+func (f *failingAtomicFile) Sync() error {
+	if f.failure == "sync" {
+		return errors.New("injected sync failure")
+	}
+	return f.File.Sync()
+}
+
+func (f *failingAtomicFile) Close() error {
+	err := f.File.Close()
+	if f.failure == "close" {
+		return errors.New("injected close failure")
+	}
+	return err
+}
+
+func TestSaveAtomicFailureBeforeRenameKeepsDestination(t *testing.T) {
+	t.Parallel()
+	for _, failure := range []string{"chmod", "write", "sync", "close", "rename"} {
+		failure := failure
+		t.Run(failure, func(t *testing.T) {
+			t.Parallel()
+			directory := t.TempDir()
+			path := filepath.Join(directory, "config")
+			if err := os.WriteFile(path, []byte("old"), 0600); err != nil {
+				t.Fatal(err)
+			}
+
+			operations := defaultAtomicWriteOperations
+			operations.createTemp = func(directory, pattern string) (atomicFile, error) {
+				file, err := os.CreateTemp(directory, pattern)
+				if err != nil {
+					return nil, err
+				}
+				return &failingAtomicFile{File: file, failure: failure}, nil
+			}
+			if failure == "rename" {
+				operations.rename = func(string, string) error { return errors.New("injected rename failure") }
+			}
+
+			if err := saveAtomic(path, []byte("new"), SaveOptions{}, operations); err == nil {
+				t.Fatal("saveAtomic() unexpectedly succeeded")
+			}
+			got, err := os.ReadFile(path)
+			if err != nil || string(got) != "old" {
+				t.Fatalf("destination = %q, %v; want unchanged", got, err)
+			}
+			matches, err := filepath.Glob(filepath.Join(directory, ".config.tmp-*"))
+			if err != nil || len(matches) != 0 {
+				t.Fatalf("temporary files remain: %v, %v", matches, err)
+			}
+		})
+	}
+}
+
+func TestSaveAtomicReportsDirectorySyncFailure(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	path := filepath.Join(directory, "config")
+	operations := defaultAtomicWriteOperations
+	syncErr := errors.New("injected directory sync failure")
+	operations.syncDirectory = func(string) error { return syncErr }
+
+	err := saveAtomic(path, []byte("new"), SaveOptions{}, operations)
+	if err == nil || !errors.Is(err, syncErr) {
+		t.Fatalf("saveAtomic() error = %v", err)
+	}
+	got, readErr := os.ReadFile(path)
+	if readErr != nil || string(got) != "new" {
+		t.Fatalf("renamed destination = %q, %v", got, readErr)
 	}
 }
