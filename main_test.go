@@ -183,6 +183,61 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestRunUsesAtomicSaverInLosslessMode(t *testing.T) {
+	source := path.Join(t.TempDir(), "input.yaml")
+	if err := os.WriteFile(source, []byte("schema"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	atomicCalled := false
+	err := Run(Cmd.Args{ToSSH: true, Lossless: true, Src: source, Dest: "config"}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return false },
+		GetContent:    func(string) ([]byte, error) { return []byte("schema"), nil },
+		Process:       func(string, string, Cmd.Args) ([]byte, error) { return []byte("Host example\n"), nil },
+		SaveFile:      func(string, []byte) error { t.Fatal("legacy saver called"); return nil },
+		SaveLossless: func(string, []byte) error {
+			atomicCalled = true
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !atomicCalled {
+		t.Fatal("lossless saver was not called")
+	}
+}
+
+func TestRunLosslessPipePreservesInputAndOutputBytes(t *testing.T) {
+	input := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
+	var output []byte
+	err := Run(Cmd.Args{ToSSH: true, Lossless: true}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return true },
+		GetUserInputFromStdin: func() string {
+			t.Fatal("line-oriented stdin reader called")
+			return ""
+		},
+		GetLosslessStdin: func() ([]byte, error) { return input, nil },
+		Process: func(_ string, got string, _ Cmd.Args) ([]byte, error) {
+			if !bytes.Equal([]byte(got), input) {
+				t.Fatalf("processor input = %q, want %q", got, input)
+			}
+			return []byte(got), nil
+		},
+		WriteOutput: func(data []byte) error {
+			output = append([]byte(nil), data...)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(output, input) {
+		t.Fatalf("stdout = %q, want %q", output, input)
+	}
+}
+
 func TestMainWithDependencies(t *testing.T) {
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()

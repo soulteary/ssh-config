@@ -15,6 +15,7 @@ SSH Config Tool 是一个用于管理 SSH 配置文件的命令行工具。它�
 - 支持从文件输入或标准输入(stdin)读取配置
 - 支持输出到文件或标准输出(stdout)
 - 自动检测输入格式(YAML/JSON/SSH Config)
+- 提供可选的 v3 无损格式，保留注释、顺序、重复指令、引号、换行符和未知指令
 
 ## 安装
 
@@ -75,6 +76,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。
 - `-src`: 指定要读取的原始配置文件，或配置目录
 - `-dest`: 指定要保存的配置文件路径
+- `-lossless`: 使用无损解析器和 v3 YAML/JSON 格式。此模式接受单个源文件或标准输入，并以原子方式写入目标文件。
 - `-help`: 查看程序命令行帮助
 
 ### 示例
@@ -96,6 +98,16 @@ ssh-config -to-json -src ~/.ssh/config -dest output.json
 ```bash
 cat input.conf | ssh-config -to-yaml > output.yaml
 ```
+
+4. 通过 v3 YAML 格式无损编辑配置：
+
+```bash
+ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+# 修改 config.v3.yaml 中的 directive 字段；未修改的行会保留原始字节。
+ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+```
+
+为保持兼容，默认仍使用原有 YAML/JSON 格式。无损模式能够导入旧格式，但无法恢复已经被旧 map 结构丢弃的顺序和重复值。
 
 ## 开发
 

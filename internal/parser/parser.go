@@ -25,6 +25,10 @@ import (
 )
 
 func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
+	if args.Lossless {
+		return ProcessLossless(fileType, userInput, args)
+	}
+
 	var hostConfigs []Define.HostConfig
 
 	switch strings.ToUpper(fileType) {
