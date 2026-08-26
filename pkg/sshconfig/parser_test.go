@@ -70,6 +70,36 @@ func TestParseDirectiveSyntax(t *testing.T) {
 	}
 }
 
+func TestNodesReturnsIndependentSyntax(t *testing.T) {
+	t.Parallel()
+	doc, err := Parse([]byte("Host example # comment\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nodes := doc.Nodes()
+	nodes[0].Kind = NodeInvalid
+	nodes[0].Directive.KeywordValue = "match"
+	nodes[0].Directive.Arguments[0].Value = "changed"
+	nodes[0].Directive.Arguments = append(nodes[0].Directive.Arguments, Argument{Value: "extra"})
+	nodes[0].Directive.Comment.Span = Span{}
+
+	fresh := doc.Nodes()
+	if fresh[0].Kind != NodeDirective {
+		t.Fatalf("node kind = %v, want NodeDirective", fresh[0].Kind)
+	}
+	directive := fresh[0].Directive
+	if directive.KeywordValue != "host" || len(directive.Arguments) != 1 || directive.Arguments[0].Value != "example" {
+		t.Fatalf("directive was mutated through Nodes(): %#v", directive)
+	}
+	if got := string(doc.Raw(directive.Comment.Span)); got != "# comment" {
+		t.Fatalf("comment = %q, want %q", got, "# comment")
+	}
+	if got := string(doc.Bytes()); got != "Host example # comment\n" {
+		t.Fatalf("document bytes = %q", got)
+	}
+}
+
 func TestMalformedQuoteIsRetainedAndDiagnosed(t *testing.T) {
 	t.Parallel()
 	input := []byte("Host \"unfinished\n")

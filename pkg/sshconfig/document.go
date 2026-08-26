@@ -101,13 +101,35 @@ func (d *Document) Bytes() []byte {
 	return bytes.Clone(d.source)
 }
 
-// Nodes returns a shallow copy of the document nodes. Syntax slices inside a
-// directive must be treated as immutable.
+// Nodes returns an independent copy of the document nodes.
 func (d *Document) Nodes() []Node {
 	if d == nil {
 		return nil
 	}
-	return append([]Node(nil), d.nodes...)
+	nodes := make([]Node, len(d.nodes))
+	for index, node := range d.nodes {
+		nodes[index] = cloneNode(node)
+	}
+	return nodes
+}
+
+func cloneNode(node Node) Node {
+	node.Directive = cloneDirective(node.Directive)
+	node.original = cloneDirective(node.original)
+	return node
+}
+
+func cloneDirective(directive *Directive) *Directive {
+	if directive == nil {
+		return nil
+	}
+	clone := *directive
+	clone.Arguments = append([]Argument(nil), directive.Arguments...)
+	if directive.Comment != nil {
+		comment := *directive.Comment
+		clone.Comment = &comment
+	}
+	return &clone
 }
 
 // Diagnostics returns a copy of recoverable parse diagnostics.
