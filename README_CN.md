@@ -33,7 +33,19 @@ brew install soulteary/tap/ssh-config
 ### 基本用法
 
 ```bash
-ssh-config [options] <input_file> <output_file>
+ssh-config [options]
+```
+
+不带参数运行时，程序会扫描 `~/.ssh` 下的 SSH 配置，并将 YAML 输出到标准输出：
+
+```bash
+ssh-config
+```
+
+需要指定输入和输出文件时，请使用 `-src` 和 `-dest`：
+
+```bash
+ssh-config -to-yaml -src input_file -dest output_file
 ```
 
 或，使用 Linux 管道来操作文件：
@@ -74,8 +86,8 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 ### 选项
 
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。
-- `-src`: 指定要读取的原始配置文件，或配置目录
-- `-dest`: 指定要保存的配置文件路径
+- `-src`: 指定要读取的原始配置文件或配置目录；省略时扫描 `~/.ssh`
+- `-dest`: 指定要保存的配置文件路径；父目录必须已存在，省略时将转换结果写入标准输出
 - `-lossless`: 使用无损解析器和 v3 YAML/JSON 格式。此模式接受单个源文件或标准输入，并以原子方式写入目标文件。
 - `-help`: 查看程序命令行帮助
 - `-version`: 输出发布版本、提交、构建时间和工作树状态

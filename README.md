@@ -14,7 +14,7 @@ SSH Config Tool is a command-line utility for managing SSH configuration files. 
 - Converts classic SSH config files into YAML or JSON for easier editing and review
 - Scans a single file or an entire directory tree (such as `~/.ssh`) while skipping key material and other non-config files
 - Supports reading configuration from files or standard input (stdin)
-- Supports output to files or standard output (stdout), creating parent folders when needed
+- Supports output to files or standard output (stdout)
 - Automatically detects the input format (YAML/JSON/SSH Config) and tidies trailing blank lines
 - Offers an opt-in lossless v3 format that preserves comments, ordering, repeated directives, quoting, line endings, and unknown directives
 
@@ -82,7 +82,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
 - `-src`: Specify the original configuration file or directory to read from. When omitted, the tool scans `~/.ssh`.
-- `-dest`: Specify the path to save the configuration file. When omitted, the converted result is written to standard output.
+- `-dest`: Specify the path to save the configuration file. Its parent directory must already exist. When omitted, the converted result is written to standard output.
 - `-lossless`: Use the lossless parser and v3 YAML/JSON schema. This mode accepts one source file or stdin and writes destination files atomically.
 - `-help`: View program command-line help
 - `-version`: Print release, commit, build, and tree-state metadata
