@@ -60,7 +60,7 @@ func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, 
 		return schema, true, err
 	}
 
-	if strings.EqualFold(fileType, "YAML") {
+	if strings.EqualFold(fileType, "YAML") || looksLikeStructuredYAML(trimmed) {
 		schema, schemaErr := sshconfig.UnmarshalSchemaYAML(data)
 		if schemaErr == nil {
 			return schema, true, nil
@@ -73,4 +73,19 @@ func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, 
 	}
 
 	return sshconfig.Schema{}, false, nil
+}
+
+func looksLikeStructuredYAML(data []byte) bool {
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || line == "---" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		lower := strings.ToLower(line)
+		return strings.HasPrefix(lower, "schemaversion:") ||
+			strings.HasPrefix(lower, "global:") ||
+			strings.HasPrefix(lower, "default:") ||
+			(strings.HasPrefix(lower, "group ") && strings.Contains(line, ":"))
+	}
+	return false
 }
