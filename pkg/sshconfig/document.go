@@ -72,6 +72,7 @@ type Node struct {
 	Kind      NodeKind
 	Span      Span
 	Directive *Directive
+	original  *Directive
 }
 
 // Diagnostic records a recoverable syntax problem. Lossless parsing keeps
@@ -87,6 +88,9 @@ type Document struct {
 	nodes       []Node
 	diagnostics []Diagnostic
 	lineEnding  string
+	replacement map[NodeID][]byte
+	removed     map[NodeID]bool
+	nextID      NodeID
 }
 
 // Bytes returns an independent copy of the original document bytes.

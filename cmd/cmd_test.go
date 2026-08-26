@@ -153,6 +153,12 @@ func TestCheckIOArgvValid(t *testing.T) {
 			wantResult: true,
 			wantDesc:   "",
 		},
+		{
+			name:       "Lossless mode rejects a source directory",
+			args:       Cmd.Args{Src: testDir, Lossless: true},
+			wantResult: false,
+			wantDesc:   "Lossless mode requires a single source file or standard input",
+		},
 	}
 
 	for _, tt := range tests {
@@ -259,11 +265,12 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "Set all flags",
-			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-src", "source.txt", "-dest", "destination.txt", "-help"},
+			args: []string{"-to-yaml", "-to-ssh", "-to-json", "-lossless", "-src", "source.txt", "-dest", "destination.txt", "-help"},
 			expected: Cmd.Args{
 				ToYAML:   true,
 				ToSSH:    true,
 				ToJSON:   true,
+				Lossless: true,
 				Src:      "source.txt",
 				Dest:     "destination.txt",
 				ShowHelp: true,
@@ -349,6 +356,9 @@ func TestResetFlags(t *testing.T) {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 	if result.ToYAML != expected.ToYAML {
+		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
+	}
+	if result.Lossless != expected.Lossless {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 }

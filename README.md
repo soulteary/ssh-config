@@ -16,6 +16,7 @@ SSH Config Tool is a command-line utility for managing SSH configuration files. 
 - Supports reading configuration from files or standard input (stdin)
 - Supports output to files or standard output (stdout), creating parent folders when needed
 - Automatically detects the input format (YAML/JSON/SSH Config) and tidies trailing blank lines
+- Offers an opt-in lossless v3 format that preserves comments, ordering, repeated directives, quoting, line endings, and unknown directives
 
 ## Installation
 
@@ -82,6 +83,7 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
 - `-src`: Specify the original configuration file or directory to read from. When omitted, the tool scans `~/.ssh`.
 - `-dest`: Specify the path to save the configuration file. When omitted, the converted result is written to standard output.
+- `-lossless`: Use the lossless parser and v3 YAML/JSON schema. This mode accepts one source file or stdin and writes destination files atomically.
 - `-help`: View program command-line help
 
 ### Examples
@@ -109,6 +111,16 @@ ssh-config -to-json -src ~/.ssh/config -dest output.json
 ```bash
 cat input.conf | ssh-config -to-yaml > output.yaml
 ```
+
+5. Losslessly edit a configuration through the v3 YAML representation:
+
+```bash
+ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+# Edit directive fields in config.v3.yaml. Unchanged lines retain their exact bytes.
+ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+```
+
+The previous YAML/JSON formats remain the default for compatibility. Lossless mode can import them, but ordering and repeated values already discarded by a legacy map cannot be reconstructed.
 
 ## Development
 

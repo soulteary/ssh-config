@@ -18,12 +18,14 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
 	Cmd "github.com/soulteary/ssh-config/v2/cmd"
 	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
 	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
+	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
 )
 
 type Dependencies struct {
@@ -32,7 +34,10 @@ type Dependencies struct {
 	Println               func(...interface{}) (n int, err error)
 	GetContent            func(string) ([]byte, error)
 	SaveFile              func(string, []byte) error
+	SaveLossless          func(string, []byte) error
 	GetUserInputFromStdin func() string
+	GetLosslessStdin      func() ([]byte, error)
+	WriteOutput           func([]byte) error
 	Process               func(string, string, Cmd.Args) ([]byte, error)
 	CheckUseStdin         func() bool
 	UserHomeDir           func() (string, error)
@@ -48,7 +53,16 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	pipeMode := deps.CheckUseStdin()
 	var userInput string
 	if pipeMode {
-		userInput = deps.GetUserInputFromStdin()
+		if args.Lossless && deps.GetLosslessStdin != nil {
+			input, err := deps.GetLosslessStdin()
+			if err != nil {
+				deps.Println("Error reading stdin:", err)
+				return err
+			}
+			userInput = string(input)
+		} else {
+			userInput = deps.GetUserInputFromStdin()
+		}
 	} else {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
 		if !isValid {
@@ -72,14 +86,32 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	}
 
 	if pipeMode {
-		deps.Println(string(result))
+		if args.Lossless && deps.WriteOutput != nil {
+			if err := deps.WriteOutput(result); err != nil {
+				deps.Println("Error writing output:", err)
+				return err
+			}
+		} else {
+			deps.Println(string(result))
+		}
 	} else {
 		if args.Dest == "" {
-			deps.Println(string(result))
+			if args.Lossless && deps.WriteOutput != nil {
+				if err := deps.WriteOutput(result); err != nil {
+					deps.Println("Error writing output:", err)
+					return err
+				}
+			} else {
+				deps.Println(string(result))
+			}
 			return nil
 		}
 
-		err := deps.SaveFile(args.Dest, result)
+		save := deps.SaveFile
+		if args.Lossless && deps.SaveLossless != nil {
+			save = deps.SaveLossless
+		}
+		err := save(args.Dest, result)
 		if err != nil {
 			deps.Println("Error saving file:", err)
 			return err
@@ -93,14 +125,22 @@ func Run(args Cmd.Args, deps Dependencies) error {
 
 func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 	deps := Dependencies{
-		StdinStat:             os.Stdin.Stat,
-		Exit:                  os.Exit,
-		Println:               fmt.Println,
-		GetContent:            Fn.GetPathContent,
-		SaveFile:              Fn.Save,
+		StdinStat:  os.Stdin.Stat,
+		Exit:       os.Exit,
+		Println:    fmt.Println,
+		GetContent: Fn.GetPathContent,
+		SaveFile:   Fn.Save,
+		SaveLossless: func(path string, data []byte) error {
+			return sshconfig.SaveAtomic(path, data, sshconfig.SaveOptions{PreserveMode: true})
+		},
 		GetUserInputFromStdin: Fn.GetUserInputFromStdin,
-		Process:               Parser.Process,
-		CheckUseStdin:         func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
+		GetLosslessStdin:      func() ([]byte, error) { return io.ReadAll(os.Stdin) },
+		WriteOutput: func(data []byte) error {
+			_, err := os.Stdout.Write(data)
+			return err
+		},
+		Process:       Parser.Process,
+		CheckUseStdin: func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
 	}
 	args := Cmd.ParseArgs()
 
