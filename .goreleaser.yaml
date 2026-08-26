@@ -88,7 +88,7 @@ dockers_v2:
     tags:
       - "v{{ .Version }}"
       - "{{ if .IsNightly }}nightly{{ end }}"
-      - "{{ if not .IsNightly }}latest{{ end }}"
+      - "{{ if and (not .IsNightly) (not .Prerelease) }}latest{{ end }}"
     dockerfile: Dockerfile
     # 禁用 SBOM/attestation，避免 CI 默认 docker 驱动不支持时报错
     sbom: false
