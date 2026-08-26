@@ -2,6 +2,7 @@ package sshconfig
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -90,12 +91,17 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 	if stack[path] {
 		return fmt.Errorf("sshconfig: recursive include cycle at %s", path)
 	}
+	file, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
+	}
+	defer file.Close()
 	if options.CheckPermissions {
-		if err := checkIncludePermissions(path); err != nil {
+		if err := checkIncludePermissions(file, path); err != nil {
 			return err
 		}
 	}
-	data, err := os.ReadFile(path)
+	data, err := io.ReadAll(file)
 	if err != nil {
 		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}
@@ -208,8 +214,8 @@ func expandPercentTokens(value string, tokens map[byte]string) (string, error) {
 	return out.String(), nil
 }
 
-func checkIncludePermissions(path string) error {
-	info, err := os.Stat(path)
+func checkIncludePermissions(file *os.File, path string) error {
+	info, err := file.Stat()
 	if err != nil {
 		return fmt.Errorf("sshconfig: inspect included file %s: %w", path, err)
 	}
@@ -219,5 +225,5 @@ func checkIncludePermissions(path string) error {
 	if info.Mode().Perm()&0022 != 0 {
 		return fmt.Errorf("sshconfig: bad permissions on %s: mode %o is writable by group or others", path, info.Mode().Perm())
 	}
-	return nil
+	return checkIncludeOwner(info, path)
 }
