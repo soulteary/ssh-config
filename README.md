@@ -126,7 +126,7 @@ The previous YAML/JSON formats remain the default for compatibility. Lossless mo
 
 ### Dependencies
 
-- Go 1.26+
+- Go 1.27+
 
 ### Build
 
