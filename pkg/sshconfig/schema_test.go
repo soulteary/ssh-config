@@ -116,6 +116,59 @@ func TestSchemaPreservesInvalidNodesAsRawBytes(t *testing.T) {
 	assertSchemaDocumentBytes(t, fromYAML, "config", input)
 }
 
+func TestSchemaPreservesUnsafeDirectiveViewsAsRawOnly(t *testing.T) {
+	t.Parallel()
+	tests := map[string][]byte{
+		"hash in keyword":              []byte("Foo#Bar baz\n"),
+		"vertical tab in keyword":      []byte("Foo\vBar baz\n"),
+		"NUL in keyword":               []byte("Host\x00 example\n"),
+		"NUL in unquoted argument":     []byte("Host example\x00hidden\n"),
+		"NUL in trailing comment text": []byte("Host example # note\x00hidden\n"),
+	}
+
+	for name, input := range tests {
+		name, input := name, input
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			document, err := Parse(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			schemaDocument, err := document.ToSchema("config")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(schemaDocument.Nodes) != 1 || schemaDocument.Nodes[0].Type != "directive" || schemaDocument.Nodes[0].Directive != nil {
+				t.Fatalf("schema node = %#v, want raw-only directive", schemaDocument.Nodes)
+			}
+			schema := NewSchema(schemaDocument)
+			if err := schema.Validate(); err != nil {
+				t.Fatalf("raw-only schema does not validate: %v", err)
+			}
+
+			jsonData, err := MarshalSchemaJSON(schema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fromJSON, err := UnmarshalSchemaJSON(jsonData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertSchemaDocumentBytes(t, fromJSON, "config", input)
+
+			yamlData, err := MarshalSchemaYAML(schema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fromYAML, err := UnmarshalSchemaYAML(yamlData)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertSchemaDocumentBytes(t, fromYAML, "config", input)
+		})
+	}
+}
+
 func TestSchemaEditPreservesMissingFinalNewline(t *testing.T) {
 	t.Parallel()
 	input := []byte("Host example\n  User old")
