@@ -17,3 +17,8 @@ additional `.sbom.json` suffix. Container-native Buildx attestations are not
 currently emitted because the release publishes the same multi-platform image
 to registries with different attestation support. Archive provenance remains
 independently verifiable through GitHub's Sigstore-backed attestation service.
+
+The runtime image pins its Alpine base by both version and digest, contains no
+interactive shell, and starts the converter as the unprivileged numeric user
+`65532:65532`. Supply a host UID/GID explicitly only when bind-mounted output
+must be owned by that host user.

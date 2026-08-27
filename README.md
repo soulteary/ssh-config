@@ -71,6 +71,7 @@ Convert file (test.yaml) in the current directory to YAML (abc.yaml):
 docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
+The image runs as the unprivileged numeric user `65532:65532` by default.
 Passing the host UID and GID keeps files written to the bind mount owned by
 the current user. It is not required when the result is written only to
 standard output.
@@ -81,11 +82,10 @@ Just want to see the conversion results:
 docker run --rm -it -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml
 ```
 
-If you want to use Linux pipelines, you can first enter the Docker interactive command line:
+Use `-i` to send a Linux pipeline directly to the container:
 
 ```bash
-docker run --rm -it --entrypoint bash -v "$(pwd):/ssh" soulteary/ssh-config:latest
-cat /ssh/test.yaml | ssh-config -to-yaml
+cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 ```
 
 ### Options

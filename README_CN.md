@@ -76,8 +76,9 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
-写入挂载目录时传入宿主机当前用户的 UID 和 GID，可以避免生成
-`root:root` 且仅 root 可读的文件。只向标准输出打印结果时无需设置。
+镜像默认以无特权数字用户 `65532:65532` 运行。写入挂载目录时传入
+宿主机当前用户的 UID 和 GID，可以让生成文件直接归属当前用户。
+只向标准输出打印结果时无需设置。
 
 如果你只想看看转换结果：
 
@@ -85,11 +86,10 @@ docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-co
 docker run --rm -it -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml
 ```
 
-如果你想使用 Linux 管道来操作文件，可以先进入 Docker 交互式命令行：
+使用 `-i` 可将 Linux 管道直接传入容器：
 
 ```bash
-docker run --rm -it --entrypoint bash -v "$(pwd):/ssh" soulteary/ssh-config:latest
-cat /ssh/test.yaml | ssh-config -to-yaml
+cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 ```
 
 ### 选项
