@@ -379,7 +379,8 @@ func ConvertToSSH(hostConfigs []Define.HostConfig) []byte {
 					lines = append(lines, fmt.Sprintf("# %s", note))
 				}
 			}
-			lines = append(lines, fmt.Sprintf("Host %s", renderLegacyHostPatterns(config.Name)))
+			hostName := config.Extra.Prefix + config.Name
+			lines = append(lines, fmt.Sprintf("Host %s", renderLegacyHostPatterns(hostName)))
 
 			orderMaps := Fn.GetOrderMaps(config.Config)
 			for _, field := range orderMaps.Keys {
