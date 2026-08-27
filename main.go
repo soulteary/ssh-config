@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	Cmd "github.com/soulteary/ssh-config/v3/cmd"
 	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
@@ -183,6 +184,11 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		UserHomeDir:   userHomeDir,
 	}
 	args := Cmd.ParseArgs()
+	if len(args.Positionals) > 0 {
+		fmt.Fprintf(os.Stderr, "Unexpected positional arguments: %s\n", strings.Join(args.Positionals, " "))
+		exit(2)
+		return
+	}
 	if args.ShowHelp {
 		fmt.Print(Cmd.Usage)
 		return
