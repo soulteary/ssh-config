@@ -1,6 +1,7 @@
 package sshconfig
 
 import (
+	"io"
 	"strings"
 	"testing"
 )
@@ -23,5 +24,31 @@ func TestParseReaderLimitsInput(t *testing.T) {
 	}
 	if _, err := ParseReader(strings.NewReader(input), ParseOptions{MaxBytes: -1}); err == nil || !strings.Contains(err.Error(), "negative") {
 		t.Fatalf("negative limit error = %v", err)
+	}
+}
+
+type countingReader struct {
+	reader io.Reader
+	read   int
+}
+
+func (reader *countingReader) Read(buffer []byte) (int, error) {
+	count, err := reader.reader.Read(buffer)
+	reader.read += count
+	return count, err
+}
+
+func TestReadAllAtMostStopsAfterTheBudget(t *testing.T) {
+	t.Parallel()
+	reader := &countingReader{reader: strings.NewReader(strings.Repeat("x", 1024*1024))}
+	_, exceeded, err := readAllAtMost(reader, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !exceeded {
+		t.Fatal("readAllAtMost() accepted an oversized stream")
+	}
+	if reader.read != 9 {
+		t.Fatalf("readAllAtMost() consumed %d bytes, want the 8-byte budget plus one probe", reader.read)
 	}
 }
