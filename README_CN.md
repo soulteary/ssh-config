@@ -166,7 +166,7 @@ go test -v ./... -covermode=atomic -coverprofile=coverage.out && go tool cover -
 
 # 使用教程
 
-- [使用结构化数据管理 SSH 配置：SSH Config Tool](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html)
+- [v1/v2 旧版教程：使用结构化数据管理 SSH 配置](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html) — v3 用户执行其中的目录扫描和旧版数据格式命令时必须添加 `-legacy`；另请阅读 [v3 迁移指南](./docs/migration-v3.md)。
 
 # 感谢
 

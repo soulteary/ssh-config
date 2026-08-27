@@ -168,7 +168,7 @@ This project is licensed under the Apache License. See the [LICENSE](./LICENSE) 
 
 # Guide
 
-- [SSH Config Tool: Use structured data to manage SSH configuration](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html)
+- [Legacy v1/v2 guide: SSH Config Tool](https://soulteary.com/2024/10/15/manage-ssh-configuration-using-structure-data-ssh-config-tool.html) — v3 users must add `-legacy` for the directory-scan and legacy schema commands shown there; see the [migration guide](./docs/migration-v3.md).
 
 # Credits
 
