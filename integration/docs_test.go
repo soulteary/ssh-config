@@ -78,11 +78,36 @@ func markdownDestinations(content []byte) []string {
 
 func matchingMarkdownDelimiter(content []byte, start int, open, close byte) (int, bool) {
 	depth := 0
+	quote := byte(0)
+	angleDestination := false
 	for index := start; index < len(content); index++ {
 		if escapedMarkdownByte(content, index) {
 			continue
 		}
-		switch content[index] {
+		character := content[index]
+		if open == '(' {
+			if quote != 0 {
+				if character == quote {
+					quote = 0
+				}
+				continue
+			}
+			if angleDestination {
+				if character == '>' {
+					angleDestination = false
+				}
+				continue
+			}
+			if depth == 1 && character == '<' {
+				angleDestination = true
+				continue
+			}
+			if depth == 1 && (character == '"' || character == '\'') {
+				quote = character
+				continue
+			}
+		}
+		switch character {
 		case open:
 			depth++
 		case close:
@@ -93,6 +118,21 @@ func matchingMarkdownDelimiter(content []byte, start int, open, close byte) (int
 		}
 	}
 	return 0, false
+}
+
+func TestDocumentationMarkdownDestinationsIgnoreTitleAndAngleParentheses(t *testing.T) {
+	t.Parallel()
+	destinations := markdownDestinations([]byte(`[guide](missing.md "see (draft") [angle](<missing(two).md>)`))
+	want := map[string]bool{
+		`missing.md "see (draft"`: true,
+		`<missing(two).md>`:        true,
+	}
+	for _, destination := range destinations {
+		delete(want, destination)
+	}
+	if len(want) != 0 {
+		t.Fatalf("markdownDestinations() missed destinations with title or angle parentheses: %v", want)
+	}
 }
 
 func escapedMarkdownByte(content []byte, index int) bool {
