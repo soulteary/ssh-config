@@ -152,6 +152,49 @@ func TestResolveIncludesExpansionErrors(t *testing.T) {
 	}
 }
 
+func TestResolveIncludesResourceLimits(t *testing.T) {
+	t.Parallel()
+	directory := t.TempDir()
+	entry := filepath.Join(directory, "config")
+	target := filepath.Join(directory, "included")
+	entryContent := "Include included\n"
+	targetContent := "Host included\n"
+	writeTestConfig(t, entry, entryContent)
+	writeTestConfig(t, target, targetContent)
+
+	tests := []struct {
+		name    string
+		options ResolveOptions
+		wantErr string
+	}{
+		{name: "file count", options: ResolveOptions{RelativeBase: directory, MaxFiles: 1}, wantErr: "file count exceeds"},
+		{name: "single file bytes", options: ResolveOptions{RelativeBase: directory, MaxFileBytes: int64(len(entryContent) - 1)}, wantErr: "exceeds maximum size"},
+		{name: "total bytes", options: ResolveOptions{RelativeBase: directory, MaxTotalBytes: int64(len(entryContent) + len(targetContent) - 1)}, wantErr: "total limit"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := ResolveIncludes(entry, test.options)
+			if err == nil || !strings.Contains(err.Error(), test.wantErr) {
+				t.Fatalf("ResolveIncludes() error = %v, want %q", err, test.wantErr)
+			}
+		})
+	}
+
+	graph, err := ResolveIncludes(entry, ResolveOptions{
+		RelativeBase:  directory,
+		MaxFiles:      2,
+		MaxFileBytes:  int64(len(entryContent)),
+		MaxTotalBytes: int64(len(entryContent) + len(targetContent)),
+	})
+	if err != nil {
+		t.Fatalf("exact resource limits: %v", err)
+	}
+	if len(graph.Order) != 2 {
+		t.Fatalf("order = %v", graph.Order)
+	}
+}
+
 func writeTestConfig(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(content), 0600); err != nil {

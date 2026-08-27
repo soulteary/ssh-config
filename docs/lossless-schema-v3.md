@@ -117,6 +117,16 @@ if err != nil {
 encoded, err := sshconfig.MarshalSchemaYAML(sshconfig.NewSchema(schemaDoc))
 ```
 
+For untrusted streams, use `ParseReader` with a byte limit:
+
+```go
+doc, err := sshconfig.ParseReader(reader, sshconfig.ParseOptions{MaxBytes: 4 << 20})
+```
+
+`ResolveIncludes` also accepts `MaxFileBytes`, `MaxTotalBytes`, and `MaxFiles`
+in `ResolveOptions`. Set these limits when Include graphs are supplied by an
+untrusted caller; zero keeps the corresponding limit disabled.
+
 Use `UnmarshalSchemaYAML` or `UnmarshalSchemaJSON` for strict decoding, then
 call `Schema.Document(path)` and `Document.MarshalPreserve()` to reconstruct
 SSH source.

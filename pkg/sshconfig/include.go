@@ -2,7 +2,6 @@ package sshconfig
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,6 +26,15 @@ type ResolveOptions struct {
 	Tokens map[byte]string
 	// CheckPermissions rejects files writable by group or others.
 	CheckPermissions bool
+	// MaxFileBytes rejects any one entry or included file above this size.
+	// Zero means unlimited.
+	MaxFileBytes int64
+	// MaxTotalBytes limits bytes read across the traversal, including repeated
+	// Include matches. Zero means unlimited.
+	MaxTotalBytes int64
+	// MaxFiles limits file reads across the traversal, including repeated
+	// Include matches. Zero means unlimited.
+	MaxFiles int
 }
 
 // ResolvedFile is one parsed file in an Include graph.
@@ -49,7 +57,9 @@ type DocumentGraph struct {
 	Files map[string]*ResolvedFile
 	Edges []IncludeEdge
 	// Order records traversal order, including repeated non-recursive includes.
-	Order []string
+	Order         []string
+	resolvedBytes int64
+	resolvedFiles int
 }
 
 // ResolveIncludes parses entry and recursively builds its Include graph.
@@ -57,6 +67,9 @@ type DocumentGraph struct {
 func ResolveIncludes(entry string, options ResolveOptions) (*DocumentGraph, error) {
 	if entry == "" {
 		return nil, fmt.Errorf("sshconfig: include entry path is empty")
+	}
+	if options.MaxFileBytes < 0 || options.MaxTotalBytes < 0 || options.MaxFiles < 0 {
+		return nil, fmt.Errorf("sshconfig: include resource limits must not be negative")
 	}
 	absolute, err := filepath.Abs(entry)
 	if err != nil {
@@ -91,6 +104,9 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 	if stack[path] {
 		return fmt.Errorf("sshconfig: recursive include cycle at %s", path)
 	}
+	if options.MaxFiles > 0 && g.resolvedFiles >= options.MaxFiles {
+		return fmt.Errorf("sshconfig: include file count exceeds %d at %s", options.MaxFiles, path)
+	}
 	file, err := openIncludeFile(path)
 	if err != nil {
 		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
@@ -101,10 +117,16 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 			return err
 		}
 	}
-	data, err := io.ReadAll(file)
+	data, err := readAllLimited(file, options.MaxFileBytes, fmt.Sprintf("included file %s", path))
 	if err != nil {
 		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}
+	dataBytes := int64(len(data))
+	if options.MaxTotalBytes > 0 && (dataBytes > options.MaxTotalBytes || g.resolvedBytes > options.MaxTotalBytes-dataBytes) {
+		return fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
+	}
+	g.resolvedBytes += dataBytes
+	g.resolvedFiles++
 	doc, err := Parse(data)
 	if err != nil {
 		return fmt.Errorf("sshconfig: parse included file %s: %w", path, err)
