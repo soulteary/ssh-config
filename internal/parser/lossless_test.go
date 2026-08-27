@@ -61,6 +61,26 @@ func TestProcessLosslessPreservesCommentOnlySSHInput(t *testing.T) {
 	}
 }
 
+func TestProcessLosslessMigratesCustomLegacyYAMLGroup(t *testing.T) {
+	t.Parallel()
+	input := `work:
+  Hosts:
+    example:
+      config:
+        User: alice
+`
+
+	got, err := Parser.ProcessLossless("YAML", input, Cmd.Args{ToSSH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Host example", "User alice"} {
+		if !bytes.Contains(got, []byte(want)) {
+			t.Fatalf("migrated SSH = %q, want it to contain %q", got, want)
+		}
+	}
+}
+
 func TestProcessLosslessMigratesLegacyJSON(t *testing.T) {
 	t.Parallel()
 	input := `[{"Name":"example","Data":{"User":"root"}}]`
