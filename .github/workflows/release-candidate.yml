@@ -1,0 +1,90 @@
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit:
+        description: Full commit SHA expected at the tip of main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Verify immutable candidate
+        shell: bash
+        env:
+          EXPECTED_COMMIT: ${{ inputs.expected_commit }}
+        run: |
+          set -euo pipefail
+          if [[ ! "${EXPECTED_COMMIT}" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::expected_commit must be a full 40-character commit SHA"
+            exit 1
+          fi
+          test "$(git rev-parse HEAD)" = "${EXPECTED_COMMIT}"
+          test "$(git rev-parse origin/main)" = "${EXPECTED_COMMIT}"
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Verify source
+        shell: bash
+        run: |
+          set -euo pipefail
+          go mod tidy -diff
+          test "$(go list -m -f '{{ .Path }}')" = "github.com/soulteary/ssh-config/v3"
+          command -v ssh
+          ssh -V
+          go test -race ./...
+          go vet ./...
+
+      - name: Scan dependencies
+        shell: bash
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          govulncheck ./...
+
+      - name: Check GoReleaser configuration
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          version: v2.18.0
+          args: check
+
+      - name: Build release snapshot
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          version: v2.18.0
+          args: release --snapshot --clean
+
+      - name: Smoke-test candidate container
+        shell: bash
+        run: |
+          set -euo pipefail
+          image="$(docker image ls --format '{{.Repository}}:{{.Tag}}' "ghcr.io/${GITHUB_REPOSITORY}" | head -n 1)"
+          test -n "${image}"
+          docker image inspect "${image}" >/dev/null
+          docker run --rm "${image}" -version
