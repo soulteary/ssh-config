@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
 	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
 )
 
@@ -71,6 +72,47 @@ func TestGroupYAMLConfigPreservesHostWithoutConfig(t *testing.T) {
 	output := string(Parser.ConvertToSSH(configs))
 	if !strings.Contains(output, "Host example\n") {
 		t.Fatalf("ConvertToSSH() dropped empty host:\n%s", output)
+	}
+}
+
+func TestGroupYAMLConfigPreservesPrefixedWildcardHost(t *testing.T) {
+	t.Parallel()
+
+	configs, err := Parser.GroupYAMLConfigStrict(`Group work:
+  Prefix: work-
+  Hosts:
+    "*": {}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(Parser.ConvertToSSH(configs))
+	if !strings.Contains(output, "Host work-*\n") {
+		t.Fatalf("ConvertToSSH() changed the prefixed wildcard host:\n%s", output)
+	}
+}
+
+func TestConvertToYAMLPreservesRepeatedRawNamesAcrossPrefixes(t *testing.T) {
+	t.Parallel()
+
+	input := []Define.HostConfig{
+		{Name: "x", Extra: Define.HostExtraConfig{Prefix: "a-"}},
+		{Name: "x", Extra: Define.HostExtraConfig{Prefix: "b-"}},
+	}
+	encoded := Parser.ConvertToYAML(input)
+	configs, err := Parser.GroupYAMLConfigStrict(string(encoded))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs) != 2 {
+		t.Fatalf("round trip retained %d hosts, want 2:\n%s", len(configs), encoded)
+	}
+	effective := map[string]bool{}
+	for _, config := range configs {
+		effective[config.Extra.Prefix+config.Name] = true
+	}
+	if !effective["a-x"] || !effective["b-x"] {
+		t.Fatalf("round-trip hosts = %#v, want a-x and b-x", configs)
 	}
 }
 

@@ -81,11 +81,9 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 
 	normalConfigs := Fn.FindNormalConfig(hostConfigs)
 	if len(normalConfigs) > 0 {
-		groupNames := make([]string, 0, len(normalConfigs))
-		groupsData := make(map[string]yaml.MapSlice)
+		usedGroupNames := make(map[string]bool)
 		for _, config := range normalConfigs {
-			groupName := fmt.Sprintf("Group %s", config.Name)
-			groupNames = append(groupNames, groupName)
+			groupName := uniqueLegacyGroupName(config, usedGroupNames)
 			groupHostConfig := Define.HostConfig{}
 			if config.Notes != "" {
 				groupHostConfig.Notes = config.Notes
@@ -100,10 +98,7 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 			if config.Extra.Prefix != "" {
 				groupItems = append(yaml.MapSlice{{Key: "Prefix", Value: config.Extra.Prefix}}, groupItems...)
 			}
-			groupsData[groupName] = groupItems
-		}
-		for _, groupName := range groupNames {
-			root = append(root, yaml.MapItem{Key: groupName, Value: groupsData[groupName]})
+			root = append(root, yaml.MapItem{Key: groupName, Value: groupItems})
 		}
 	}
 
@@ -113,6 +108,27 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 		return nil
 	}
 	return yamlData
+}
+
+func uniqueLegacyGroupName(config Define.HostConfig, used map[string]bool) string {
+	base := fmt.Sprintf("Group %s", config.Name)
+	if !used[base] {
+		used[base] = true
+		return base
+	}
+
+	effective := fmt.Sprintf("Group %s%s", config.Extra.Prefix, config.Name)
+	if !used[effective] {
+		used[effective] = true
+		return effective
+	}
+	for suffix := 2; ; suffix++ {
+		candidate := fmt.Sprintf("%s (%d)", effective, suffix)
+		if !used[candidate] {
+			used[candidate] = true
+			return candidate
+		}
+	}
 }
 
 type YAMLHostConfigGroup struct {
