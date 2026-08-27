@@ -54,8 +54,8 @@ jobs:
           docker run --rm ssh-config:pr -version
           runtime_home="$(mktemp -d)"
           printf 'Host default\n' > "${runtime_home}/config"
-          chmod 0755 "${runtime_home}"
-          docker run --rm -v "${runtime_home}:/home/ssh-config/.ssh:ro" ssh-config:pr -to-yaml | grep -q 'schemaVersion: 3'
+          chmod 0600 "${runtime_home}/config"
+          docker run --rm --user "$(id -u):$(id -g)" -v "${runtime_home}:/home/ssh-config/.ssh:ro" ssh-config:pr -to-yaml | grep -q 'schemaVersion: 3'
           if docker run --rm --entrypoint /bin/bash ssh-config:pr -c true; then
             echo "::error::runtime image unexpectedly contains Bash"
             exit 1
