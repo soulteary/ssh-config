@@ -63,6 +63,58 @@ func TestRemoveAndInsertDirective(t *testing.T) {
 	}
 }
 
+func TestReplaceInsertedDirectives(t *testing.T) {
+	t.Parallel()
+	doc, _ := Parse([]byte("Host example"))
+	id, err := doc.InsertDirectiveAfter(0, "User", "root")
+	if err != nil {
+		t.Fatalf("InsertDirectiveAfter() error = %v", err)
+	}
+	if err := doc.ReplaceDirective(id, "User", "deploy user"); err != nil {
+		t.Fatalf("ReplaceDirective(inserted) error = %v", err)
+	}
+	appended, err := doc.AppendDirective("Port", "22")
+	if err != nil {
+		t.Fatalf("AppendDirective() error = %v", err)
+	}
+	if err := doc.ReplaceDirective(appended, "Port", "2200"); err != nil {
+		t.Fatalf("ReplaceDirective(appended) error = %v", err)
+	}
+	if err := doc.ReplaceDirective(appended, "Port", "2200"); err != nil {
+		t.Fatalf("ReplaceDirective(appended again) error = %v", err)
+	}
+	got, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatalf("MarshalPreserve() error = %v", err)
+	}
+	want := "Host example\nUser \"deploy user\"\nPort 2200\n"
+	if string(got) != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
+func TestReplaceRemovedInsertedDirectiveRestoresIt(t *testing.T) {
+	t.Parallel()
+	doc, _ := Parse(nil)
+	id, err := doc.AppendDirective("User", "root")
+	if err != nil {
+		t.Fatalf("AppendDirective() error = %v", err)
+	}
+	if err := doc.RemoveNode(id); err != nil {
+		t.Fatalf("RemoveNode() error = %v", err)
+	}
+	if err := doc.ReplaceDirective(id, "User", "bob"); err != nil {
+		t.Fatalf("ReplaceDirective() error = %v", err)
+	}
+	got, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatalf("MarshalPreserve() error = %v", err)
+	}
+	if want := "User bob\n"; string(got) != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+}
+
 func TestEditErrors(t *testing.T) {
 	t.Parallel()
 	doc, _ := Parse([]byte("# comment\n"))

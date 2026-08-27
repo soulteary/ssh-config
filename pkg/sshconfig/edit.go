@@ -22,12 +22,30 @@ func (d *Document) ReplaceDirective(id NodeID, keyword string, arguments ...stri
 	}
 	node := &d.nodes[index]
 	if node.original == nil {
-		return fmt.Errorf("sshconfig: node %d is not a source directive", id)
+		raw, ok := d.replacement[id]
+		if !ok || node.Kind != NodeDirective || node.Directive == nil {
+			return fmt.Errorf("sshconfig: node %d is not a directive", id)
+		}
+		prefix := syntheticDirectivePrefix(raw)
+		d.replacement[id] = append(prefix, d.renderNewDirective(keyword, arguments)...)
+		node.Directive = syntheticDirective(keyword, arguments)
+		d.removed[id] = false
+		return nil
 	}
 	d.replacement[id] = d.renderReplacement(*node, keyword, arguments)
 	node.Kind = NodeDirective
 	node.Directive = syntheticDirective(keyword, arguments)
 	d.removed[id] = false
+	return nil
+}
+
+func syntheticDirectivePrefix(raw []byte) []byte {
+	if bytes.HasPrefix(raw, []byte("\r\n")) {
+		return []byte("\r\n")
+	}
+	if len(raw) > 0 && (raw[0] == '\n' || raw[0] == '\r') {
+		return raw[:1]
+	}
 	return nil
 }
 
