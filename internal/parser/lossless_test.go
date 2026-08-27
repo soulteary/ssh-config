@@ -13,14 +13,14 @@ func TestProcessLosslessSSHThroughStructuredFormats(t *testing.T) {
 	t.Parallel()
 	input := "# keep\r\nHost=example\r\n\tIdentityFile first\r\n\tIdentityFile second # backup\r\n"
 
-	yamlData, err := Parser.Process("TEXT", input, Cmd.Args{ToYAML: true, Lossless: true})
+	yamlData, err := Parser.Process("TEXT", input, Cmd.Args{ToYAML: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(string(yamlData), "schemaVersion: 3") || !strings.Contains(string(yamlData), "rawBase64:") {
 		t.Fatalf("lossless YAML does not contain the v3 envelope:\n%s", yamlData)
 	}
-	yamlBack, err := Parser.Process("YAML", string(yamlData), Cmd.Args{ToSSH: true, Lossless: true})
+	yamlBack, err := Parser.Process("YAML", string(yamlData), Cmd.Args{ToSSH: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,11 +28,11 @@ func TestProcessLosslessSSHThroughStructuredFormats(t *testing.T) {
 		t.Fatalf("YAML round trip mismatch\n got: %q\nwant: %q", yamlBack, input)
 	}
 
-	jsonData, err := Parser.Process("TEXT", input, Cmd.Args{ToJSON: true, Lossless: true})
+	jsonData, err := Parser.Process("TEXT", input, Cmd.Args{ToJSON: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	jsonBack, err := Parser.Process("YAML", string(jsonData), Cmd.Args{ToSSH: true, Lossless: true})
+	jsonBack, err := Parser.Process("YAML", string(jsonData), Cmd.Args{ToSSH: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestProcessLosslessSSHThroughStructuredFormats(t *testing.T) {
 func TestProcessLosslessMigratesLegacyJSON(t *testing.T) {
 	t.Parallel()
 	input := `[{"Name":"example","Data":{"User":"root"}}]`
-	got, err := Parser.Process("JSON", input, Cmd.Args{ToSSH: true, Lossless: true})
+	got, err := Parser.Process("JSON", input, Cmd.Args{ToSSH: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestProcessLosslessMigratesLegacyJSON(t *testing.T) {
 
 func TestProcessLosslessRejectsInvalidStructuredInput(t *testing.T) {
 	t.Parallel()
-	_, err := Parser.Process("YAML", "schemaVersion: 9\ndocuments: []\n", Cmd.Args{ToSSH: true, Lossless: true})
+	_, err := Parser.Process("YAML", "schemaVersion: 9\ndocuments: []\n", Cmd.Args{ToSSH: true})
 	if err == nil {
 		t.Fatal("invalid structured input was accepted")
 	}
@@ -73,7 +73,7 @@ func TestProcessLosslessDetectsReorderedV3YAML(t *testing.T) {
       - example
 schemaVersion: 3
 `
-	got, err := Parser.Process("TEXT", input, Cmd.Args{ToSSH: true, Lossless: true})
+	got, err := Parser.Process("TEXT", input, Cmd.Args{ToSSH: true})
 	if err != nil {
 		t.Fatal(err)
 	}

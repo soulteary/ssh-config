@@ -248,7 +248,7 @@ func validateLegacySSHConfig(input string) error {
 }
 
 func legacyLossError(line int, reason string) error {
-	return fmt.Errorf("legacy conversion would lose data at line %d: %s; use -lossless", line, reason)
+	return fmt.Errorf("legacy conversion would lose data at line %d: %s; retry without -legacy", line, reason)
 }
 
 func nodeLine(node sshconfig.Node) int {

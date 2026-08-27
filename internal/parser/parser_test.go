@@ -59,21 +59,21 @@ func TestProcess(t *testing.T) {
 			name:     "YAML to SSH",
 			fileType: "YAML",
 			input:    string(yamlContent),
-			args:     Cmd.Args{ToSSH: true},
+			args:     Cmd.Args{ToSSH: true, Legacy: true},
 			want:     sshContent,
 		},
 		{
 			name:     "JSON to YAML",
 			fileType: "JSON",
 			input:    string(jsonContent),
-			args:     Cmd.Args{ToYAML: true},
+			args:     Cmd.Args{ToYAML: true, Legacy: true},
 			want:     yamlContent,
 		},
 		{
 			name:     "TEXT to JSON",
 			fileType: "TEXT",
 			input:    string(sshContent),
-			args:     Cmd.Args{ToJSON: true},
+			args:     Cmd.Args{ToJSON: true, Legacy: true},
 			want:     jsonContent,
 		},
 		{
@@ -138,7 +138,7 @@ func TestProcess(t *testing.T) {
 
 func TestProcess_InvalidTEXT_ReturnsError(t *testing.T) {
 	// 未闭合引号会使 Lex 报错，进而 GroupSSHConfig 返回 error
-	_, err := Parser.Process("TEXT", `Host "unclosed`, Cmd.Args{ToYAML: true})
+	_, err := Parser.Process("TEXT", `Host "unclosed`, Cmd.Args{ToYAML: true, Legacy: true})
 	if err == nil {
 		t.Error("Process() expected error for invalid TEXT input, got nil")
 	}

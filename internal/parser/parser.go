@@ -25,7 +25,7 @@ import (
 )
 
 func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
-	if args.Lossless {
+	if !args.Legacy {
 		return ProcessLossless(fileType, userInput, args)
 	}
 
