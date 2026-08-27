@@ -22,7 +22,7 @@ import (
 
 func FindGlobalConfig(configs []Define.HostConfig) (result []Define.HostConfig) {
 	for _, config := range configs {
-		if config.Name == "*" {
+		if config.Extra.Prefix+config.Name == "*" {
 			result = append(result, config)
 		}
 	}
@@ -31,7 +31,7 @@ func FindGlobalConfig(configs []Define.HostConfig) (result []Define.HostConfig) 
 
 func FindNormalConfig(configs []Define.HostConfig) (result []Define.HostConfig) {
 	for _, config := range configs {
-		if config.Name != "*" {
+		if config.Extra.Prefix+config.Name != "*" {
 			result = append(result, config)
 		}
 	}

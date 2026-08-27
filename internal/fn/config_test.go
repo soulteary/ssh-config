@@ -79,6 +79,21 @@ func TestFindGlobalConfigNoGlobal(t *testing.T) {
 	}
 }
 
+func TestFindGlobalConfigUsesEffectiveHostName(t *testing.T) {
+	configs := []Define.HostConfig{
+		{Name: "*", Extra: Define.HostExtraConfig{Prefix: "work-"}},
+		{Name: "*"},
+	}
+	global := Fn.FindGlobalConfig(configs)
+	if len(global) != 1 || global[0].Extra.Prefix != "" {
+		t.Fatalf("FindGlobalConfig() = %#v, want only the unprefixed wildcard", global)
+	}
+	normal := Fn.FindNormalConfig(configs)
+	if len(normal) != 1 || normal[0].Extra.Prefix != "work-" {
+		t.Fatalf("FindNormalConfig() = %#v, want the prefixed wildcard", normal)
+	}
+}
+
 func TestFindNormalConfig(t *testing.T) {
 	configs := []Define.HostConfig{
 		{Name: "host1", Notes: "Test host 1", Config: map[string]string{"key1": "value1"}},
