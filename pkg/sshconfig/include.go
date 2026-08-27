@@ -117,7 +117,28 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 			return err
 		}
 	}
-	data, err := readAllLimited(file, options.MaxFileBytes, fmt.Sprintf("included file %s", path))
+	readLimit := options.MaxFileBytes
+	totalLimitApplied := false
+	if options.MaxTotalBytes > 0 {
+		remaining := options.MaxTotalBytes - g.resolvedBytes
+		if readLimit <= 0 || remaining <= readLimit {
+			readLimit = remaining
+			totalLimitApplied = true
+		}
+	}
+	var data []byte
+	if readLimit > 0 || options.MaxTotalBytes > 0 {
+		var exceeded bool
+		data, exceeded, err = readAllAtMost(file, readLimit)
+		if exceeded {
+			if totalLimitApplied {
+				return fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
+			}
+			return fmt.Errorf("sshconfig: included file %s exceeds maximum size of %d bytes", path, options.MaxFileBytes)
+		}
+	} else {
+		data, err = readAllLimited(file, 0, "")
+	}
 	if err != nil {
 		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}

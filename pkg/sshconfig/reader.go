@@ -31,23 +31,33 @@ func readAllLimited(reader io.Reader, maxBytes int64, subject string) ([]byte, e
 	if maxBytes <= 0 {
 		return io.ReadAll(reader)
 	}
-
-	limited := &io.LimitedReader{R: reader, N: maxBytes}
-	input, err := io.ReadAll(limited)
+	input, exceeded, err := readAllAtMost(reader, maxBytes)
 	if err != nil {
 		return nil, err
 	}
+	if exceeded {
+		return nil, fmt.Errorf("sshconfig: %s exceeds maximum size of %d bytes", subject, maxBytes)
+	}
+	return input, nil
+}
+
+func readAllAtMost(reader io.Reader, maxBytes int64) ([]byte, bool, error) {
+	limited := &io.LimitedReader{R: reader, N: maxBytes}
+	input, err := io.ReadAll(limited)
+	if err != nil {
+		return nil, false, err
+	}
 	if int64(len(input)) < maxBytes {
-		return input, nil
+		return input, false, nil
 	}
 
 	var probe [1]byte
 	n, probeErr := io.ReadFull(reader, probe[:])
 	if n > 0 {
-		return nil, fmt.Errorf("sshconfig: %s exceeds maximum size of %d bytes", subject, maxBytes)
+		return nil, true, nil
 	}
 	if probeErr != nil && probeErr != io.EOF {
-		return nil, probeErr
+		return nil, false, probeErr
 	}
-	return input, nil
+	return input, false, nil
 }
