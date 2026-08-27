@@ -45,6 +45,19 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Install Syft
+        id: syft
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+
+      - name: Add Syft to PATH
+        shell: bash
+        env:
+          SYFT_CMD: ${{ steps.syft.outputs.cmd }}
+        run: |
+          mkdir -p "${RUNNER_TEMP}/syft-bin"
+          ln -s "${SYFT_CMD}" "${RUNNER_TEMP}/syft-bin/syft"
+          printf '%s\n' "${RUNNER_TEMP}/syft-bin" >> "${GITHUB_PATH}"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 

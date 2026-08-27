@@ -47,6 +47,9 @@ universal_binaries:
 checksum:
   name_template: "checksums.txt"
 
+sboms:
+  - artifacts: archive
+
 changelog:
   sort: asc
   use: github
@@ -90,7 +93,9 @@ dockers_v2:
       - "{{ if .IsNightly }}nightly{{ end }}"
       - "{{ if and (not .IsNightly) (not .Prerelease) }}latest{{ end }}"
     dockerfile: Dockerfile
-    # 禁用 SBOM/attestation，避免 CI 默认 docker 驱动不支持时报错
+    # Archive SBOMs and signed provenance are generated outside Buildx.
+    # Container-native SBOM/provenance remain disabled until every registry
+    # target supports the same Buildx attestation mode.
     sbom: false
     flags:
       - "--pull"
