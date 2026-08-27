@@ -69,15 +69,27 @@ jobs:
           printf 'publish=%s\n' "${publish}" >> "${GITHUB_OUTPUT}"
           printf 'tag=%s\n' "${tag}" >> "${GITHUB_OUTPUT}"
 
-      - name: Make existing-release recovery idempotent
-        if: github.event_name == 'workflow_dispatch' && steps.release.outputs.publish == 'true'
+      - name: Prepare GoReleaser configuration
+        id: goreleaser-config
+        if: steps.release.outputs.publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
-          config=".goreleaser.yaml"
-          test "$(grep -c '^release:$' "${config}")" = "1"
-          sed -i '/^release:$/a\  mode: replace\n  replace_existing_artifacts: true' "${config}"
-          grep -A2 '^release:$' "${config}"
+          config="${RUNNER_TEMP}/goreleaser.yaml"
+          cp .goreleaser.yaml "${config}"
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            test "$(grep -c '^release:$' "${config}")" = "1"
+            sed -i '/^release:$/a\  mode: replace\n  replace_existing_artifacts: true' "${config}"
+            if ! grep -q '^sboms:$' "${config}"; then
+              sed -i '/^changelog:$/i\sboms:\n  - artifacts: archive\n' "${config}"
+            fi
+            grep -A2 '^sboms:$' "${config}"
+            grep -A2 '^release:$' "${config}"
+          fi
+
+          printf 'path=%s\n' "${config}" >> "${GITHUB_OUTPUT}"
+          git diff --exit-code
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -144,7 +156,7 @@ jobs:
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         with:
           version: v2.18.0
-          args: check
+          args: check --config ${{ steps.goreleaser-config.outputs.path || '.goreleaser.yaml' }}
 
       - name: Login to Docker Hub
         if: steps.release.outputs.publish == 'true'
@@ -189,7 +201,7 @@ jobs:
         if: success() && steps.release.outputs.publish == 'true'
         with:
           version: v2.18.0
-          args: ${{ steps.release-notes.outputs.args }}
+          args: ${{ steps.release-notes.outputs.args }} --config ${{ steps.goreleaser-config.outputs.path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
