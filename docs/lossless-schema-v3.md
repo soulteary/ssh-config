@@ -2,7 +2,7 @@
 
 The v3 YAML/JSON schema is a transport and editing format for OpenSSH client
 configuration files. Its version number is independent of the application's
-semantic version and the Go module's `/v2` path.
+semantic version and the Go module's `/v3` path.
 
 ## Design guarantees
 
@@ -41,9 +41,10 @@ The root fields are:
 - `schemaVersion`: must be the integer `3`.
 - `documents`: a non-empty array of physical source documents.
 
-Each document has an optional `path` and a `nodes` array. Non-empty paths must
-be unique. An empty selector can reconstruct a document only when the envelope
-contains exactly one document.
+Each document has a `path` and a `nodes` array. The path may be empty only when
+the envelope contains one document. Every document in a multi-document
+envelope needs a non-empty, unique path. An empty selector can reconstruct a
+document only when the envelope contains exactly one document.
 
 JSON uses the same field names and shapes. Both decoders reject unknown fields,
 unsupported versions, duplicate paths, invalid Base64, trailing JSON values,
@@ -112,11 +113,11 @@ SSH source.
 
 ## Legacy migration
 
-Lossless mode accepts the previous map-based YAML and host-array JSON formats
-and migrates them deterministically into v3. YAML group and host source order,
-including order inherited through merge aliases, is retained because SSH host
-precedence is order-sensitive. Directive map keys are sorted, and legacy
-`Default` and `Common` values use the existing precedence rules.
+The default converter accepts the previous map-based YAML and host-array JSON
+formats and migrates them deterministically into v3. YAML group and host source
+order, including order inherited through merge aliases, is retained because
+SSH host precedence is order-sensitive. Directive map keys are sorted, and
+legacy `Default` and `Common` values use the existing precedence rules.
 
 Migration cannot recover information that the legacy representation never
 stored, including repeated directive values, physical comments and

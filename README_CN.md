@@ -11,11 +11,11 @@ SSH Config Tool 是一个用于管理 SSH 配置文件的命令行工具。它�
 ## 特性
 
 - 支持从 YAML/JSON 格式转换为标准 SSH 配置格式
-- 支持从标准 SSH 配置格式转换为 YAML/JSON 格式
+- 默认使用无损 v3 格式转换，保留注释、顺序、重复指令、引号、换行符和未知指令
+- 通过 `-legacy` 保留原有 map 格式转换和目录扫描能力
 - 支持从文件输入或标准输入(stdin)读取配置
 - 支持输出到文件或标准输出(stdout)
 - 自动检测输入格式(YAML/JSON/SSH Config)
-- 提供可选的 v3 无损格式，保留注释、顺序、重复指令、引号、换行符和未知指令
 
 ## 安装
 
@@ -28,6 +28,12 @@ brew tap soulteary/tap
 brew install soulteary/tap/ssh-config
 ```
 
+Go 用户可以直接安装 v3 命令：
+
+```bash
+go install github.com/soulteary/ssh-config/v3@latest
+```
+
 ## 使用方法
 
 ### 基本用法
@@ -36,22 +42,22 @@ brew install soulteary/tap/ssh-config
 ssh-config [options]
 ```
 
-不带参数运行时，程序会扫描 `~/.ssh` 下的 SSH 配置，并将 YAML 输出到标准输出：
+不带参数运行时，程序读取 `~/.ssh/config`，并将无损 v3 YAML 输出到标准输出：
 
 ```bash
-ssh-config
+ssh-config -lossless
 ```
 
 需要指定输入和输出文件时，请使用 `-src` 和 `-dest`：
 
 ```bash
-ssh-config -to-yaml -src input_file -dest output_file
+ssh-config -lossless -to-yaml -src input_file -dest output_file
 ```
 
 或，使用 Linux 管道来操作文件：
 
 ```bash
-cat input_file | ssh-config -to-yaml > output_file
+cat input_file | ssh-config -lossless -to-yaml > output_file
 ```
 
 ### Docker
@@ -59,36 +65,37 @@ cat input_file | ssh-config -to-yaml > output_file
 下载镜像
 
 ```bash
-docker pull soulteary/ssh-config:v2.0.0
+docker pull soulteary/ssh-config:latest
 # or
-docker pull ghcr.io/soulteary/ssh-config:v2.0.0
+docker pull ghcr.io/soulteary/ssh-config:latest
 ```
 
 将当前目录的配置文件转换并保存为新的文件：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v2.0.0 ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 如果你只想看看转换结果：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v2.0.0 ssh-config -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml
 ```
 
 如果你想使用 Linux 管道来操作文件，可以先进入 Docker 交互式命令行：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:v2.0.0 bash
-cat /ssh/test.yaml | ssh-config -to-yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest bash
+cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 ```
 
 ### 选项
 
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。
-- `-src`: 指定要读取的原始配置文件或配置目录；省略时扫描 `~/.ssh`
+- `-src`: 指定输入文件；省略时无损模式读取 `~/.ssh/config`，旧模式扫描 `~/.ssh`
 - `-dest`: 指定要保存的配置文件路径；父目录必须已存在，省略时将转换结果写入标准输出
-- `-lossless`: 使用无损解析器和 v3 YAML/JSON 格式。此模式接受单个源文件或标准输入，并以原子方式写入目标文件。
+- `-legacy`: 使用原有的有损 map/array 格式，并启用目录扫描。
+- `-lossless`: 已弃用的兼容参数；v3 已默认使用无损转换。
 - `-help`: 查看程序命令行帮助
 - `-version`: 输出发布版本、提交、构建时间和工作树状态
 
@@ -97,19 +104,19 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 1. 将 YAML 格式转换为 SSH 配置格式:
 
 ```bash
-ssh-config -to-ssh -src input.yaml -dest output.conf
+ssh-config -lossless -to-ssh -src input.yaml -dest output.conf
 ```
 
 2. 将 SSH 配置格式转换为 JSON 格式:
 
 ```bash
-ssh-config -to-json -src ~/.ssh/config -dest output.json
+ssh-config -lossless -to-json -src ~/.ssh/config -dest output.json
 ```
 
 3. 从标准输入读取，输出到标准输出，并以 YAML 格式保存:
 
 ```bash
-cat input.conf | ssh-config -to-yaml > output.yaml
+cat input.conf | ssh-config -lossless -to-yaml > output.yaml
 ```
 
 4. 通过 v3 YAML 格式无损编辑配置：
@@ -120,9 +127,10 @@ ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
-为保持兼容，默认仍使用原有 YAML/JSON 格式。无损模式能够导入旧格式并保留 YAML 中 Group 和 Host 的源顺序，但无法恢复旧 map 结构未表达的重复值和指令顺序。
+程序默认读取原有 YAML/JSON 格式并迁移为 v3 Schema。只有下游仍依赖旧 map/array 输出时才需要使用 `-legacy`；旧文档中已经丢失的重复值和指令顺序无法恢复。
 
 字段结构、字节保持规则、编辑行为、Go API 示例和旧格式迁移边界详见 [v3 无损格式规范](./docs/lossless-schema-v3.md)。
+升级脚本和 Go 导入路径前，请阅读 [v2 到 v3 迁移指南](./docs/migration-v3.md)。
 
 ## 开发
 

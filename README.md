@@ -12,11 +12,11 @@ SSH Config Tool is a command-line utility for managing SSH configuration files. 
 
 - Converts YAML/JSON representations into standard SSH config files
 - Converts classic SSH config files into YAML or JSON for easier editing and review
-- Scans a single file or an entire directory tree (such as `~/.ssh`) while skipping key material and other non-config files
+- Uses the lossless v3 schema by default, preserving comments, ordering, repeated directives, quoting, line endings, and unknown directives
+- Keeps the previous map-based conversion and directory scan available through `-legacy`
 - Supports reading configuration from files or standard input (stdin)
 - Supports output to files or standard output (stdout)
 - Automatically detects the input format (YAML/JSON/SSH Config) and tidies trailing blank lines
-- Offers an opt-in lossless v3 format that preserves comments, ordering, repeated directives, quoting, line endings, and unknown directives
 
 ## Installation
 
@@ -29,6 +29,12 @@ brew tap soulteary/tap
 brew install soulteary/tap/ssh-config
 ```
 
+Go users can install the v3 command directly:
+
+```bash
+go install github.com/soulteary/ssh-config/v3@latest
+```
+
 ## Usage
 
 ### Basic Usage
@@ -37,16 +43,16 @@ brew install soulteary/tap/ssh-config
 ssh-config [options]
 ```
 
-Run without arguments to export all SSH configuration under `~/.ssh` to YAML on standard output:
+Run without arguments to export `~/.ssh/config` as lossless v3 YAML on standard output:
 
 ```bash
-ssh-config
+ssh-config -lossless
 ```
 
 Or, use Linux pipes to manipulate files:
 
 ```bash
-cat input_file | ssh-config -to-yaml > output_file
+cat input_file | ssh-config -lossless -to-yaml > output_file
 ```
 
 ### Docker
@@ -62,34 +68,35 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 Convert file (test.yaml) in the current directory to YAML (abc.yaml):
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 Just want to see the conversion results:
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml
 ```
 
 If you want to use Linux pipelines, you can first enter the Docker interactive command line:
 
 ```bash
 docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest bash
-cat /ssh/test.yaml | ssh-config -to-yaml
+cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 ```
 
 ### Options
 
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
-- `-src`: Specify the original configuration file or directory to read from. When omitted, the tool scans `~/.ssh`.
+- `-src`: Specify the source file. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`.
 - `-dest`: Specify the path to save the configuration file. Its parent directory must already exist. When omitted, the converted result is written to standard output.
-- `-lossless`: Use the lossless parser and v3 YAML/JSON schema. This mode accepts one source file or stdin and writes destination files atomically.
+- `-legacy`: Use the previous lossy map/array formats. This mode also enables directory scanning.
+- `-lossless`: Deprecated compatibility alias; lossless conversion is already the default in v3.
 - `-help`: View program command-line help
 - `-version`: Print release, commit, build, and tree-state metadata
 
 ### Examples
 
-1. Export the SSH configuration for your current user to YAML (default behaviour):
+1. Export the primary SSH configuration as lossless v3 YAML (default behaviour):
 
 ```bash
 ssh-config
@@ -98,19 +105,19 @@ ssh-config
 2. Convert YAML format to SSH config format:
 
 ```bash
-ssh-config -to-ssh -src input.yaml -dest output.conf
+ssh-config -lossless -to-ssh -src input.yaml -dest output.conf
 ```
 
 3. Convert SSH config format to JSON format:
 
 ```bash
-ssh-config -to-json -src ~/.ssh/config -dest output.json
+ssh-config -lossless -to-json -src ~/.ssh/config -dest output.json
 ```
 
 4. Read from standard input, output to standard output, and save in YAML format:
 
 ```bash
-cat input.conf | ssh-config -to-yaml > output.yaml
+cat input.conf | ssh-config -lossless -to-yaml > output.yaml
 ```
 
 5. Losslessly edit a configuration through the v3 YAML representation:
@@ -121,9 +128,10 @@ ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
-The previous YAML/JSON formats remain the default for compatibility. Lossless mode can import them and retains YAML group and host source order, but repeated values and directive ordering not represented by a legacy map cannot be reconstructed.
+The previous YAML/JSON formats remain readable and are migrated to schema v3 by default. Use `-legacy` only when an existing consumer still requires the old map/array output. Repeated values and directive ordering already absent from a legacy document cannot be reconstructed.
 
 See the [lossless schema v3 specification](./docs/lossless-schema-v3.md) for node shapes, byte-preservation rules, editing behavior, API examples, and migration limits.
+See the [v2 to v3 migration guide](./docs/migration-v3.md) before updating scripts or Go imports.
 
 ## Development
 

@@ -4,7 +4,8 @@
 
 | Version | Supported |
 | --- | --- |
-| Current `2.x` release and `main` | Yes |
+| Current `3.x` release and `main` | Yes |
+| Latest `2.x` release | Critical security fixes only |
 | Releases before `2.0.0` | No |
 
 Schema version `3` is a data-format version, not an application major version.
