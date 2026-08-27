@@ -28,9 +28,12 @@ func TestGetYamlDataStrictRejectsUnknownAndDuplicateFields(t *testing.T) {
 func TestGetJSONDataStrictRejectsUnknownAndTrailingValues(t *testing.T) {
 	t.Parallel()
 	tests := map[string]string{
-		"unknown field":  `[{"Name":"example","Datta":{"User":"alice"}}]`,
-		"second value":   `[] []`,
-		"trailing token": `[] invalid`,
+		"unknown field":         `[{"Name":"example","Datta":{"User":"alice"}}]`,
+		"duplicate host field":  `[{"Name":"safe","Name":"evil","Data":{"User":"alice"}}]`,
+		"case folded duplicate": `[{"Name":"safe","name":"evil","Data":{"User":"alice"}}]`,
+		"duplicate data field":  `[{"Name":"example","Data":{"User":"alice","User":"root"}}]`,
+		"second value":          `[] []`,
+		"trailing token":        `[] invalid`,
 	}
 	for name, input := range tests {
 		name, input := name, input
@@ -66,5 +69,8 @@ func TestStrictLegacyDecodersKeepValidInput(t *testing.T) {
 	}
 	if _, err := Fn.GetJSONDataStrict("  [{\"Name\":\"example\",\"Data\":{\"User\":\"alice\"}}]\n"); err != nil {
 		t.Fatalf("GetJSONDataStrict() error = %v", err)
+	}
+	if _, err := Fn.GetJSONDataStrict("  [{\"name\":\"example\",\"data\":{\"User\":\"alice\"}}]\n"); err != nil {
+		t.Fatalf("GetJSONDataStrict() lowercase compatibility error = %v", err)
 	}
 }
