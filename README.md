@@ -68,19 +68,23 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 Convert file (test.yaml) in the current directory to YAML (abc.yaml):
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
+
+Passing the host UID and GID keeps files written to the bind mount owned by
+the current user. It is not required when the result is written only to
+standard output.
 
 Just want to see the conversion results:
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v "$(pwd):/ssh" soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml
 ```
 
 If you want to use Linux pipelines, you can first enter the Docker interactive command line:
 
 ```bash
-docker run --rm -it --entrypoint bash -v `pwd`:/ssh soulteary/ssh-config:latest
+docker run --rm -it --entrypoint bash -v "$(pwd):/ssh" soulteary/ssh-config:latest
 cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 ```
 
