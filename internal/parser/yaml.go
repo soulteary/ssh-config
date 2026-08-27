@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"slices"
 
-	Define "github.com/soulteary/ssh-config/v2/internal/define"
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
 	"gopkg.in/yaml.v2"
 	yamlv3 "gopkg.in/yaml.v3"
 )

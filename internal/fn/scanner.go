@@ -23,8 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/soulteary/ssh-config/v2/internal/define"
-	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
+	"github.com/soulteary/ssh-config/v3/internal/define"
+	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
 )
 
 const maxScannedConfigLine = 1024 * 1024

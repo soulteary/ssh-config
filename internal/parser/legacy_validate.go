@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	Define "github.com/soulteary/ssh-config/v2/internal/define"
-	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
+	Define "github.com/soulteary/ssh-config/v3/internal/define"
+	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
 )
 
 func validateLegacyHostConfigs(configs []Define.HostConfig) error {

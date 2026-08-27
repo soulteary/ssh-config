@@ -3,7 +3,7 @@ package fn_test
 import (
 	"testing"
 
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
 )
 
 func TestGetYamlDataStrictRejectsUnknownAndDuplicateFields(t *testing.T) {

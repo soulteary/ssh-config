@@ -22,9 +22,9 @@ import (
 	"reflect"
 	"testing"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
-	Fn "github.com/soulteary/ssh-config/v2/internal/fn"
-	Parser "github.com/soulteary/ssh-config/v2/internal/parser"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
+	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
+	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
 )
 
 func TestProcess(t *testing.T) {

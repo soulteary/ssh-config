@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
 )
 
 func TestCheckConvertArgvValid(t *testing.T) {

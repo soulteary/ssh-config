@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	Cmd "github.com/soulteary/ssh-config/v2/cmd"
-	"github.com/soulteary/ssh-config/v2/pkg/sshconfig"
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
+	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
 )
 
 // ProcessLossless converts SSH source or a v3 structured document without
