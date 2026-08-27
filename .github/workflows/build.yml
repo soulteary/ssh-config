@@ -69,6 +69,16 @@ jobs:
           printf 'publish=%s\n' "${publish}" >> "${GITHUB_OUTPUT}"
           printf 'tag=%s\n' "${tag}" >> "${GITHUB_OUTPUT}"
 
+      - name: Make existing-release recovery idempotent
+        if: github.event_name == 'workflow_dispatch' && steps.release.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          config=".goreleaser.yaml"
+          test "$(grep -c '^release:$' "${config}")" = "1"
+          sed -i '/^release:$/a\  mode: replace\n  replace_existing_artifacts: true' "${config}"
+          grep -A2 '^release:$' "${config}"
+
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
