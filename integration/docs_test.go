@@ -10,8 +10,7 @@ import (
 )
 
 var (
-	inlineMarkdownLink = regexp.MustCompile(`!?\[[^\]]*\]\(([^)]+)\)`)
-	referenceLink      = regexp.MustCompile(`(?m)^\s*\[[^\]]+\]:\s*(\S+)`)
+	referenceLink = regexp.MustCompile(`(?m)^\s*\[[^\]]+\]:\s*(\S+)`)
 )
 
 func TestDocumentationLinks(t *testing.T) {
@@ -21,15 +20,13 @@ func TestDocumentationLinks(t *testing.T) {
 		t.Fatal("cannot locate documentation test")
 	}
 	root := filepath.Clean(filepath.Join(filepath.Dir(filename), ".."))
-	paths := []string{
-		filepath.Join(root, "README.md"),
-		filepath.Join(root, "README_CN.md"),
-		filepath.Join(root, "SECURITY.md"),
-		filepath.Join(root, "CONTRIBUTING.md"),
-	}
-	if err := filepath.WalkDir(filepath.Join(root, "docs"), func(path string, entry os.DirEntry, err error) error {
+	var paths []string
+	if err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if entry.IsDir() && entry.Name() == ".git" {
+			return filepath.SkipDir
 		}
 		if !entry.IsDir() && strings.EqualFold(filepath.Ext(path), ".md") {
 			paths = append(paths, path)
@@ -45,11 +42,76 @@ func TestDocumentationLinks(t *testing.T) {
 			t.Errorf("read %s: %v", filepath.ToSlash(path), err)
 			continue
 		}
-		matches := inlineMarkdownLink.FindAllSubmatch(content, -1)
-		matches = append(matches, referenceLink.FindAllSubmatch(content, -1)...)
-		for _, match := range matches {
-			checkDocumentationLink(t, root, path, string(match[1]))
+		for _, destination := range markdownDestinations(content) {
+			checkDocumentationLink(t, root, path, destination)
 		}
+	}
+}
+
+func markdownDestinations(content []byte) []string {
+	var destinations []string
+	for index := 0; index < len(content); index++ {
+		if content[index] != '[' || escapedMarkdownByte(content, index) {
+			continue
+		}
+		labelEnd, ok := matchingMarkdownDelimiter(content, index, '[', ']')
+		if !ok {
+			continue
+		}
+		destinationStart := labelEnd + 1
+		for destinationStart < len(content) && (content[destinationStart] == ' ' || content[destinationStart] == '\t') {
+			destinationStart++
+		}
+		if destinationStart >= len(content) || content[destinationStart] != '(' {
+			continue
+		}
+		destinationEnd, ok := matchingMarkdownDelimiter(content, destinationStart, '(', ')')
+		if ok {
+			destinations = append(destinations, string(content[destinationStart+1:destinationEnd]))
+		}
+	}
+	for _, match := range referenceLink.FindAllSubmatch(content, -1) {
+		destinations = append(destinations, string(match[1]))
+	}
+	return destinations
+}
+
+func matchingMarkdownDelimiter(content []byte, start int, open, close byte) (int, bool) {
+	depth := 0
+	for index := start; index < len(content); index++ {
+		if escapedMarkdownByte(content, index) {
+			continue
+		}
+		switch content[index] {
+		case open:
+			depth++
+		case close:
+			depth--
+			if depth == 0 {
+				return index, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func escapedMarkdownByte(content []byte, index int) bool {
+	backslashes := 0
+	for index--; index >= 0 && content[index] == '\\'; index-- {
+		backslashes++
+	}
+	return backslashes%2 == 1
+}
+
+func TestDocumentationMarkdownDestinations(t *testing.T) {
+	t.Parallel()
+	destinations := markdownDestinations([]byte(`[![badge](./image.svg)](./report.md) [guide](./guide.md)`))
+	want := map[string]bool{"./image.svg": true, "./report.md": true, "./guide.md": true}
+	for _, destination := range destinations {
+		delete(want, destination)
+	}
+	if len(want) != 0 {
+		t.Fatalf("markdownDestinations() missed nested destinations: %v", want)
 	}
 }
 
