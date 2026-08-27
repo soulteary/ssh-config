@@ -437,6 +437,51 @@ Group production:
 	}
 }
 
+func TestMigrateLegacyFormatsPreserveArgumentSemantics(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []byte
+		load  func([]byte, string) (Schema, error)
+	}{
+		{
+			name:  "JSON",
+			input: []byte(`[{"Name":"production staging","Data":{"SendEnv":"LANG LC_*"}}]`),
+			load:  MigrateLegacyJSON,
+		},
+		{
+			name:  "YAML",
+			input: []byte("Group production:\n  Hosts:\n    production staging:\n      config:\n        SendEnv: LANG LC_*\n"),
+			load:  MigrateLegacyYAML,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			schema, err := test.load(test.input, "config")
+			if err != nil {
+				t.Fatalf("migration error = %v", err)
+			}
+			document, err := schema.Document("config")
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, err := document.MarshalPreserve()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(output), "Host production staging\n") {
+				t.Fatalf("multi-pattern Host was collapsed into one argument:\n%s", output)
+			}
+			if !strings.Contains(string(output), "SendEnv LANG LC_*\n") {
+				t.Fatalf("multi-argument directive was collapsed into one argument:\n%s", output)
+			}
+		})
+	}
+}
+
 func TestMigrateLegacyFormatsRejectCrossLineFields(t *testing.T) {
 	t.Parallel()
 

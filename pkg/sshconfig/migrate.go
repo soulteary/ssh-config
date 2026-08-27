@@ -172,15 +172,28 @@ func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string
 	if err := ValidateDirectiveInput("Host", []string{name}, ""); err != nil {
 		return fmt.Errorf("sshconfig: invalid legacy host %q: %w", name, err)
 	}
+	hostArguments, err := parseLegacyArgumentText("Host", name)
+	if err != nil {
+		return fmt.Errorf("sshconfig: invalid legacy host %q: %w", name, err)
+	}
+	if len(hostArguments) == 0 {
+		return fmt.Errorf("sshconfig: invalid legacy host %q: Host requires at least one pattern", name)
+	}
 	for _, note := range strings.Split(notes, "\n") {
 		if err := ValidateDirectiveInput("Host", nil, note); err != nil {
 			return fmt.Errorf("sshconfig: invalid legacy note: %w", err)
 		}
 	}
+	argumentsByKey := make(map[string][]string, len(config))
 	for key, value := range config {
 		if err := ValidateDirectiveInput(key, []string{value}, ""); err != nil {
 			return fmt.Errorf("sshconfig: invalid legacy directive %q: %w", key, err)
 		}
+		arguments, err := parseLegacyArgumentText(key, value)
+		if err != nil {
+			return fmt.Errorf("sshconfig: invalid legacy directive %q: %w", key, err)
+		}
+		argumentsByKey[key] = arguments
 	}
 	for _, note := range strings.Split(notes, "\n") {
 		if note != "" {
@@ -190,16 +203,41 @@ func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string
 		}
 	}
 	output.WriteString("Host ")
-	output.WriteString(QuoteArgument(name))
+	writeArguments(output, hostArguments)
 	output.WriteByte('\n')
 	for _, key := range sortedMapKeys(config) {
 		output.WriteString("    ")
 		output.WriteString(key)
-		output.WriteByte(' ')
-		output.WriteString(QuoteArgument(config[key]))
+		if len(argumentsByKey[key]) > 0 {
+			output.WriteByte(' ')
+			writeArguments(output, argumentsByKey[key])
+		}
 		output.WriteByte('\n')
 	}
 	return nil
+}
+
+func parseLegacyArgumentText(keyword, value string) ([]string, error) {
+	line := keyword
+	if value != "" {
+		line += " " + value
+	}
+	document, err := Parse([]byte(line + "\n"))
+	if err != nil {
+		return nil, err
+	}
+	if diagnostics := document.Diagnostics(); len(diagnostics) > 0 {
+		return nil, fmt.Errorf("%s", diagnostics[0].Message)
+	}
+	nodes := document.Nodes()
+	if len(nodes) != 1 || nodes[0].Kind != NodeDirective || nodes[0].Directive == nil {
+		return nil, fmt.Errorf("cannot parse legacy argument text")
+	}
+	arguments := make([]string, 0, len(nodes[0].Directive.Arguments))
+	for _, argument := range nodes[0].Directive.Arguments {
+		arguments = append(arguments, argument.Value)
+	}
+	return arguments, nil
 }
 
 func sortedMapKeys[V any](values map[string]V) []string {
