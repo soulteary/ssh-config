@@ -67,13 +67,32 @@ func markdownDestinations(content []byte) []string {
 		}
 		destinationEnd, ok := matchingMarkdownDelimiter(content, destinationStart, '(', ')')
 		if ok {
-			destinations = append(destinations, string(content[destinationStart+1:destinationEnd]))
+			if destination := markdownDestination(string(content[destinationStart+1 : destinationEnd])); destination != "" {
+				destinations = append(destinations, destination)
+			}
 		}
 	}
 	for _, match := range referenceLink.FindAllSubmatch(content, -1) {
 		destinations = append(destinations, string(match[1]))
 	}
 	return destinations
+}
+
+func markdownDestination(body string) string {
+	body = strings.TrimSpace(body)
+	if body == "" || body[0] == '"' || body[0] == '\'' {
+		return ""
+	}
+	if body[0] == '<' {
+		if end := strings.IndexByte(body, '>'); end >= 0 {
+			return body[:end+1]
+		}
+		return ""
+	}
+	if separator := strings.IndexAny(body, " \t\r\n"); separator >= 0 {
+		return body[:separator]
+	}
+	return body
 }
 
 func matchingMarkdownDelimiter(content []byte, start int, open, close byte) (int, bool) {
@@ -124,14 +143,22 @@ func TestDocumentationMarkdownDestinationsIgnoreTitleAndAngleParentheses(t *test
 	t.Parallel()
 	destinations := markdownDestinations([]byte(`[guide](missing.md "see (draft") [angle](<missing(two).md>)`))
 	want := map[string]bool{
-		`missing.md "see (draft"`: true,
-		`<missing(two).md>`:        true,
+		`missing.md`:        true,
+		`<missing(two).md>`: true,
 	}
 	for _, destination := range destinations {
 		delete(want, destination)
 	}
 	if len(want) != 0 {
 		t.Fatalf("markdownDestinations() missed destinations with title or angle parentheses: %v", want)
+	}
+}
+
+func TestDocumentationMarkdownDestinationsSkipTitleOnlyLinks(t *testing.T) {
+	t.Parallel()
+	destinations := markdownDestinations([]byte(`[help]( "see (draft")`))
+	if len(destinations) != 0 {
+		t.Fatalf("markdownDestinations() treated a title as a destination: %v", destinations)
 	}
 }
 
