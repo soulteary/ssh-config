@@ -7,9 +7,9 @@
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 2035,
+    "covered_statements": 2036,
     "total_statements": 2204,
-    "percentage": 92.33,
+    "percentage": 92.38,
     "threshold": 85
   },
   "packages": [
@@ -46,7 +46,7 @@
       "status": "pass",
       "tests": 47,
       "failed": 0,
-      "coverage": 96.81
+      "coverage": 97.16
     },
     {
       "name": "internal/parser",
