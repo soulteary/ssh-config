@@ -16,4 +16,6 @@ the exact commit has passed the `Release candidate` workflow.
 
 For recovery when an immutable tag exists but its publishing run is missing,
 use the `publish` mode documented in the release notes. This recovery path
-checks out and verifies the existing tag; it never moves the tag.
+checks out and verifies the existing tag; it never moves the tag. Recovery
+replaces the existing release notes with the curated document and replaces any
+same-named assets, so a partially completed publication can be retried safely.
