@@ -180,6 +180,25 @@ func TestSchemaNewDirectiveDefaultsToLF(t *testing.T) {
 	}
 }
 
+func TestSchemaDocumentRejectsInvalidNodeShapes(t *testing.T) {
+	t.Parallel()
+	tests := []SchemaDocument{
+		{Nodes: []SchemaNode{{
+			Type:      "comment",
+			Directive: &SchemaDirective{Keyword: "Host", Arguments: []string{"example"}},
+		}}},
+		{Nodes: []SchemaNode{{
+			Type:      "directive",
+			Directive: &SchemaDirective{Keyword: "Host\nProxyCommand", Arguments: []string{"example"}},
+		}}},
+	}
+	for _, schemaDocument := range tests {
+		if _, err := schemaDocument.Document(); err == nil {
+			t.Fatalf("SchemaDocument.Document() accepted invalid document: %#v", schemaDocument)
+		}
+	}
+}
+
 func TestSchemaValidationRejectsRawNodeShapeMismatches(t *testing.T) {
 	t.Parallel()
 	encode := func(raw string) string {

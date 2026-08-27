@@ -99,11 +99,11 @@ func (s Schema) Document(path string) (*Document, error) {
 		if len(s.Documents) != 1 {
 			return nil, fmt.Errorf("sshconfig: an empty document path requires exactly one schema document")
 		}
-		return s.Documents[0].Document()
+		return s.Documents[0].document()
 	}
 	for _, document := range s.Documents {
 		if document.Path == path {
-			return document.Document()
+			return document.document()
 		}
 	}
 	return nil, fmt.Errorf("sshconfig: schema document %q not found", path)
@@ -111,6 +111,13 @@ func (s Schema) Document(path string) (*Document, error) {
 
 // Document reconstructs a lossless syntax document from a v3 document.
 func (s SchemaDocument) Document() (*Document, error) {
+	if err := NewSchema(s).Validate(); err != nil {
+		return nil, err
+	}
+	return s.document()
+}
+
+func (s SchemaDocument) document() (*Document, error) {
 	var output bytes.Buffer
 	for index, node := range s.Nodes {
 		raw, err := decodeSchemaRaw(node.RawBase64)
