@@ -41,6 +41,26 @@ func TestProcessLosslessSSHThroughStructuredFormats(t *testing.T) {
 	}
 }
 
+func TestProcessLosslessPreservesCommentOnlySSHInput(t *testing.T) {
+	t.Parallel()
+	original := []byte("# keep me\r\n# second\r\n")
+
+	// Legacy format detection classifies a comment-only document as YAML.
+	// Default lossless conversion must still prefer the original SSH bytes
+	// when the input has no v3 or legacy YAML structure markers.
+	structured, err := Parser.ProcessLossless("YAML", string(original), Cmd.Args{ToYAML: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconstructed, err := Parser.ProcessLossless("YAML", string(structured), Cmd.Args{ToSSH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(reconstructed, original) {
+		t.Fatalf("comment-only round trip = %q, want %q", reconstructed, original)
+	}
+}
+
 func TestProcessLosslessMigratesLegacyJSON(t *testing.T) {
 	t.Parallel()
 	input := `[{"Name":"example","Data":{"User":"root"}}]`

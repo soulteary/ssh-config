@@ -13,7 +13,7 @@ import (
 // routing it through the legacy map representation.
 func ProcessLossless(fileType, userInput string, args Cmd.Args) ([]byte, error) {
 	data := []byte(userInput)
-	schema, structured, err := decodeLosslessInput(fileType, data)
+	schema, structured, err := decodeLosslessInput(data)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func ProcessLossless(fileType, userInput string, args Cmd.Args) ([]byte, error) 
 	}
 }
 
-func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, error) {
+func decodeLosslessInput(data []byte) (sshconfig.Schema, bool, error) {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
 		return sshconfig.Schema{}, false, nil
@@ -60,7 +60,7 @@ func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, 
 		return schema, true, err
 	}
 
-	if strings.EqualFold(fileType, "YAML") || looksLikeStructuredYAML(trimmed) {
+	if looksLikeStructuredYAML(trimmed) {
 		schema, schemaErr := sshconfig.UnmarshalSchemaYAML(data)
 		if schemaErr == nil {
 			return schema, true, nil
