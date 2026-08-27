@@ -260,6 +260,77 @@ func TestRunPipeDoesNotRequireHomeDirectory(t *testing.T) {
 	}
 }
 
+func TestRunExplicitSourceTakesPrecedenceOverStdin(t *testing.T) {
+	t.Parallel()
+
+	source := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(source, []byte("Host source\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var output []byte
+	err := Run(Cmd.Args{ToSSH: true, Src: source}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return true },
+		ReadStdin: func() ([]byte, error) {
+			t.Fatal("stdin was read even though -src was explicit")
+			return nil, nil
+		},
+		GetContent: func(path string) ([]byte, error) {
+			if path != source {
+				t.Fatalf("source path = %q, want %q", path, source)
+			}
+			return []byte("Host source\n"), nil
+		},
+		Process: func(_ string, input string, _ Cmd.Args) ([]byte, error) {
+			return []byte(input), nil
+		},
+		WriteOutput: func(data []byte) error {
+			output = append([]byte(nil), data...)
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(output) != "Host source\n" {
+		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestRunPipeHonorsDestination(t *testing.T) {
+	t.Parallel()
+
+	var savedPath string
+	var savedData []byte
+	err := Run(Cmd.Args{ToYAML: true, Dest: "config.yaml"}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return true },
+		ReadStdin:     func() ([]byte, error) { return []byte("Host input\n"), nil },
+		Process: func(_ string, input string, _ Cmd.Args) ([]byte, error) {
+			return []byte(input), nil
+		},
+		SaveFile: func(string, []byte) error {
+			t.Fatal("legacy saver called")
+			return nil
+		},
+		SaveLossless: func(path string, data []byte) error {
+			savedPath = path
+			savedData = append([]byte(nil), data...)
+			return nil
+		},
+		WriteOutput: func([]byte) error {
+			t.Fatal("stdout was used even though -dest was explicit")
+			return nil
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if savedPath != "config.yaml" || string(savedData) != "Host input\n" {
+		t.Fatalf("saved path/data = %q, %q", savedPath, savedData)
+	}
+}
+
 func TestRunDefaultModeReadsItsStructuredOutput(t *testing.T) {
 	original := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
 	formats := []struct {

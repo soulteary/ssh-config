@@ -91,8 +91,8 @@ cat /ssh/test.yaml | ssh-config -to-yaml
 ### Options
 
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
-- `-src`: Specify the source file. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`.
-- `-dest`: Specify the path to save the configuration file. Its parent directory must already exist. When omitted, the converted result is written to standard output.
+- `-src`: Specify the source file. An explicit path takes precedence over piped standard input. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`.
+- `-dest`: Specify the path to save the configuration file, including when input comes from standard input. Its parent directory must already exist. When omitted, the converted result is written to standard output.
 - `-document-path`: Select a document by its `path` when `-to-ssh` reads a multi-document v3 schema.
 - `-legacy`: Use the previous lossy map/array formats. This mode also enables directory scanning.
 - `-lossless`: Deprecated compatibility alias; lossless conversion is already the default in v3.

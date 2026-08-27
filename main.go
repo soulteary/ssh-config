@@ -58,7 +58,10 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		return fmt.Errorf("%s", notValidReason)
 	}
 
-	pipeMode := deps.CheckUseStdin()
+	// An explicit source always wins over an inherited or redirected stdin.
+	// This keeps automation deterministic when a caller supplies -src while its
+	// parent process also connects a non-terminal stdin.
+	pipeMode := args.Src == "" && deps.CheckUseStdin()
 	if !pipeMode && args.Src == "" {
 		if deps.UserHomeDir == nil {
 			err := fmt.Errorf("user home directory lookup is unavailable")
@@ -114,7 +117,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		return err
 	}
 
-	if pipeMode {
+	if args.Dest == "" {
 		if !args.Legacy && deps.WriteOutput != nil {
 			if err := deps.WriteOutput(result); err != nil {
 				deps.errorln("Error writing output:", err)
@@ -123,31 +126,20 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		} else {
 			deps.Println(string(result))
 		}
-	} else {
-		if args.Dest == "" {
-			if !args.Legacy && deps.WriteOutput != nil {
-				if err := deps.WriteOutput(result); err != nil {
-					deps.errorln("Error writing output:", err)
-					return err
-				}
-			} else {
-				deps.Println(string(result))
-			}
-			return nil
-		}
-
-		save := deps.SaveFile
-		if !args.Legacy && deps.SaveLossless != nil {
-			save = deps.SaveLossless
-		}
-		err := save(args.Dest, result)
-		if err != nil {
-			deps.errorln("Error saving file:", err)
-			return err
-		}
-		deps.Println("File has been saved successfully")
-		deps.Println("File path:", args.Dest)
+		return nil
 	}
+
+	save := deps.SaveFile
+	if !args.Legacy && deps.SaveLossless != nil {
+		save = deps.SaveLossless
+	}
+	err = save(args.Dest, result)
+	if err != nil {
+		deps.errorln("Error saving file:", err)
+		return err
+	}
+	deps.Println("File has been saved successfully")
+	deps.Println("File path:", args.Dest)
 
 	return nil
 }
