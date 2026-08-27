@@ -54,12 +54,14 @@ jobs:
         uses: soulteary/go-test-report-action@a5e77d563843af6c7a0cc3c573640fc2cd94934a # v1.1.0
         with:
           version: source
+          coverage_threshold: "85"
           commit: "false"
 
       - name: Generate Go quality report
         uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
         with:
           version: source
+          threshold: "90"
           report: "false"
           commit: "false"
 
@@ -91,6 +93,7 @@ jobs:
         with:
           version: source
           race: "true"
+          coverage_threshold: "85"
           commit: "true"
 
       - name: Upload raw test results
@@ -111,5 +114,6 @@ jobs:
         uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
         with:
           version: source
+          threshold: "90"
           report: "false"
           commit: "true"
