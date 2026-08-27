@@ -114,6 +114,34 @@ func TestProcessLosslessRejectsInvalidStructuredInput(t *testing.T) {
 	}
 }
 
+func TestProcessLosslessClassifiesMalformedStructuredPrefixes(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "schema version", input: "schemaVersion: [\n", want: "decode v3 YAML"},
+		{name: "documents", input: "documents: [\n", want: "decode v3 YAML"},
+		{name: "quoted documents", input: "\"documents\": [\n", want: "decode v3 YAML"},
+		{name: "global", input: "global: [\n", want: "decode legacy YAML"},
+		{name: "default", input: "default: [\n", want: "decode legacy YAML"},
+		{name: "group", input: "Group work: [\n", want: "decode legacy YAML"},
+		{name: "flow mapping", input: "{broken\n", want: "neither v3 nor legacy YAML"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := Parser.ProcessLossless("YAML", test.input, Cmd.Args{ToSSH: true})
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("ProcessLossless() error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
 func TestProcessLosslessSelectsSchemaDocumentByPath(t *testing.T) {
 	t.Parallel()
 	input := `schemaVersion: 3

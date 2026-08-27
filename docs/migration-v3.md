@@ -10,8 +10,8 @@ The default command reads one physical SSH configuration file and writes v3
 YAML:
 
 ```bash
-ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
-ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+ssh-config -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
 Without `-src`, the default converter reads `~/.ssh/config`. It does not scan a
