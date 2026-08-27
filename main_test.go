@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	Cmd "github.com/soulteary/ssh-config/v3/cmd"
@@ -294,6 +295,40 @@ func TestRunExplicitSourceTakesPrecedenceOverStdin(t *testing.T) {
 	}
 	if string(output) != "Host source\n" {
 		t.Fatalf("output = %q", output)
+	}
+}
+
+func TestRunDefaultFileModeBypassesLegacyScanner(t *testing.T) {
+	t.Parallel()
+
+	source := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(source, []byte("Host source\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("Host source\n# " + strings.Repeat("x", 1024*1024+1) + "\n")
+	err := Run(Cmd.Args{ToSSH: true, Src: source}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return false },
+		GetContent: func(string) ([]byte, error) {
+			t.Fatal("default mode called the legacy scanner")
+			return nil, nil
+		},
+		GetLosslessContent: func(path string) ([]byte, error) {
+			if path != source {
+				t.Fatalf("source path = %q, want %q", path, source)
+			}
+			return want, nil
+		},
+		Process: func(_ string, input string, _ Cmd.Args) ([]byte, error) {
+			if !bytes.Equal([]byte(input), want) {
+				t.Fatal("processor did not receive the lossless input")
+			}
+			return []byte(input), nil
+		},
+		WriteOutput: func([]byte) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -116,6 +116,28 @@ Host example
 	}
 }
 
+func TestReadConfigFilePreservesLongLines(t *testing.T) {
+	content := []byte("Host example\n# " + strings.Repeat("x", 1024*1024+1) + "\n")
+	path := filepath.Join(t.TempDir(), "config")
+	if err := os.WriteFile(path, content, 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := fn.ReadConfigFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, content) {
+		t.Fatalf("ReadConfigFile() changed %d input bytes", len(content))
+	}
+}
+
+func TestReadConfigFileRejectsDirectories(t *testing.T) {
+	if _, err := fn.ReadConfigFile(t.TempDir()); err == nil {
+		t.Fatal("ReadConfigFile() accepted a directory")
+	}
+}
+
 func TestReadSSHConfigs(t *testing.T) {
 	// Create a temporary SSH directory with multiple config files
 	dir, err := os.MkdirTemp("", "ssh_test")
