@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "*.*.*"
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -32,10 +32,43 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - name: Tests
+      - name: Verify source
         run: |
           go mod tidy -diff
-          go test -v ./...
+          test "$(go list -m -f '{{ .Path }}')" = "github.com/soulteary/ssh-config/v3"
+          go test -race ./...
+          go vet ./...
+          go build -trimpath -o "${RUNNER_TEMP}/ssh-config" .
+          "${RUNNER_TEMP}/ssh-config" -version
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+
+      - name: Scan dependencies
+        run: govulncheck ./...
+
+      - name: Verify tagged Go module
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          smoke_dir="$(mktemp -d)"
+          GOBIN="${smoke_dir}/bin" go install "github.com/soulteary/ssh-config/v3@${GITHUB_REF_NAME}"
+          "${smoke_dir}/bin/ssh-config" -version
+          cd "${smoke_dir}"
+          go mod init release-smoke
+          go get "github.com/soulteary/ssh-config/v3@${GITHUB_REF_NAME}"
+          printf '%s\n' \
+            'package main' \
+            'import "github.com/soulteary/ssh-config/v3/pkg/sshconfig"' \
+            'func main() { _, _ = sshconfig.Parse([]byte("Host smoke\\n")) }' \
+            > main.go
+          go build .
+
+      - name: Check GoReleaser configuration
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          version: v2.18.0
+          args: check
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/')
@@ -52,11 +85,24 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run GoReleaser
+      - name: Build release snapshot
+        if: github.event_name == 'workflow_dispatch'
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        with:
+          version: v2.18.0
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         if: success() && startsWith(github.ref, 'refs/tags/')
         with:
-          version: '~> v2'
+          version: v2.18.0
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Smoke-test published container
+        if: success() && startsWith(github.ref, 'refs/tags/')
+        run: docker run --rm "ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME}" -version
