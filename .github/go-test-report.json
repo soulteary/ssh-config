@@ -1,24 +1,24 @@
 {
   "schema_version": "1.0",
   "tests": {
-    "total": 205,
-    "passed": 205,
+    "total": 211,
+    "passed": 211,
     "failed": 0,
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 2030,
-    "total_statements": 2203,
-    "percentage": 92.15,
+    "covered_statements": 2035,
+    "total_statements": 2204,
+    "percentage": 92.33,
     "threshold": 0
   },
   "packages": [
     {
       "name": ".",
       "status": "pass",
-      "tests": 9,
+      "tests": 11,
       "failed": 0,
-      "coverage": 81.05
+      "coverage": 83.7
     },
     {
       "name": "cmd",
@@ -44,9 +44,9 @@
     {
       "name": "internal/fn",
       "status": "pass",
-      "tests": 45,
+      "tests": 47,
       "failed": 0,
-      "coverage": 96.83
+      "coverage": 96.81
     },
     {
       "name": "internal/parser",
@@ -65,9 +65,9 @@
     {
       "name": "pkg/sshconfig",
       "status": "pass",
-      "tests": 69,
+      "tests": 71,
       "failed": 0,
-      "coverage": 91.11
+      "coverage": 91.27
     }
   ],
   "failures": null
