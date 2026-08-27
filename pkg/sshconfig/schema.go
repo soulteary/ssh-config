@@ -128,7 +128,7 @@ func (s SchemaDocument) document() (*Document, error) {
 		if node.Directive == nil {
 			if len(raw) == 0 {
 				if node.Type == "blank" {
-					output.WriteByte('\n')
+					writeSchemaBlank(&output)
 					continue
 				}
 				return nil, fmt.Errorf("sshconfig: schema node %d has neither raw bytes nor a directive", index)
@@ -143,6 +143,22 @@ func (s SchemaDocument) document() (*Document, error) {
 		output.Write(renderSchemaDirective(node.Directive, detectLineEnding(raw), len(raw) == 0))
 	}
 	return Parse(output.Bytes())
+}
+
+func writeSchemaBlank(output *bytes.Buffer) {
+	current := output.Bytes()
+	switch {
+	case len(current) == 0:
+		output.WriteByte('\n')
+	case bytes.HasSuffix(current, []byte("\r\n")):
+		output.WriteString("\r\n")
+	case bytes.HasSuffix(current, []byte("\n")):
+		output.WriteByte('\n')
+	case bytes.HasSuffix(current, []byte("\r")):
+		output.WriteByte('\r')
+	default:
+		output.WriteString("\n\n")
+	}
 }
 
 // Validate checks the v3 envelope and node shapes.
