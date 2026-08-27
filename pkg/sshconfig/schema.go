@@ -78,7 +78,12 @@ func (d *Document) ToSchema(path string) (SchemaDocument, error) {
 			if directive.Comment != nil {
 				view.Comment = string(clean.source[directive.Comment.Span.Start:directive.Comment.Span.End])
 			}
-			schemaNode.Directive = view
+			// Parsed source may contain bytes that are safe to preserve but not
+			// safe to expose as an editable directive. Keep those nodes raw-only
+			// instead of making the entire lossless export fail validation.
+			if ValidateDirectiveInput(view.Keyword, view.Arguments, view.Comment) == nil {
+				schemaNode.Directive = view
+			}
 		}
 		result.Nodes = append(result.Nodes, schemaNode)
 	}
