@@ -45,19 +45,19 @@ ssh-config [options]
 不带参数运行时，程序读取 `~/.ssh/config`，并将无损 v3 YAML 输出到标准输出：
 
 ```bash
-ssh-config -lossless
+ssh-config
 ```
 
 需要指定输入和输出文件时，请使用 `-src` 和 `-dest`：
 
 ```bash
-ssh-config -lossless -to-yaml -src input_file -dest output_file
+ssh-config -to-yaml -src input_file -dest output_file
 ```
 
 或，使用 Linux 管道来操作文件：
 
 ```bash
-cat input_file | ssh-config -lossless -to-yaml > output_file
+cat input_file | ssh-config -to-yaml > output_file
 ```
 
 ### Docker
@@ -73,7 +73,7 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 将当前目录的配置文件转换并保存为新的文件：
 
 ```bash
-docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 写入挂载目录时传入宿主机当前用户的 UID 和 GID，可以避免生成
@@ -82,14 +82,14 @@ docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-co
 如果你只想看看转换结果：
 
 ```bash
-docker run --rm -it -v "$(pwd):/ssh" soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v "$(pwd):/ssh" soulteary/ssh-config:latest -to-yaml -src /ssh/test.yaml
 ```
 
 如果你想使用 Linux 管道来操作文件，可以先进入 Docker 交互式命令行：
 
 ```bash
 docker run --rm -it --entrypoint bash -v "$(pwd):/ssh" soulteary/ssh-config:latest
-cat /ssh/test.yaml | ssh-config -lossless -to-yaml
+cat /ssh/test.yaml | ssh-config -to-yaml
 ```
 
 ### 选项
@@ -107,27 +107,27 @@ cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 1. 将 YAML 格式转换为 SSH 配置格式:
 
 ```bash
-ssh-config -lossless -to-ssh -src input.yaml -dest output.conf
+ssh-config -to-ssh -src input.yaml -dest output.conf
 ```
 
 2. 将 SSH 配置格式转换为 JSON 格式:
 
 ```bash
-ssh-config -lossless -to-json -src ~/.ssh/config -dest output.json
+ssh-config -to-json -src ~/.ssh/config -dest output.json
 ```
 
 3. 从标准输入读取，输出到标准输出，并以 YAML 格式保存:
 
 ```bash
-cat input.conf | ssh-config -lossless -to-yaml > output.yaml
+cat input.conf | ssh-config -to-yaml > output.yaml
 ```
 
 4. 通过 v3 YAML 格式无损编辑配置：
 
 ```bash
-ssh-config -lossless -to-yaml -src ~/.ssh/config -dest config.v3.yaml
+ssh-config -to-yaml -src ~/.ssh/config -dest config.v3.yaml
 # 修改 config.v3.yaml 中的 directive 字段；未修改的行会保留原始字节。
-ssh-config -lossless -to-ssh -src config.v3.yaml -dest ~/.ssh/config
+ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 ```
 
 程序默认读取原有 YAML/JSON 格式并迁移为 v3 Schema。只有下游仍依赖旧 map/array 输出时才需要使用 `-legacy`；旧文档中已经丢失的重复值和指令顺序无法恢复。
