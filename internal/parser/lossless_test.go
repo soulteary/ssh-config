@@ -134,3 +134,78 @@ schemaVersion: 3
 		t.Fatalf("reordered v3 YAML output = %q", got)
 	}
 }
+
+func TestProcessLosslessPreservesIgnoreUnknownMarkerCollisions(t *testing.T) {
+	t.Parallel()
+	input := "IgnoreUnknown schemaVersion:,documents:,global:,default:\n" +
+		"schemaVersion: 3\n" +
+		"documents: keep\n" +
+		"global: keep\n" +
+		"default: keep\n" +
+		"Host *\n    User audit\n"
+
+	got, err := Parser.ProcessLossless("YAML", input, Cmd.Args{ToSSH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != input {
+		t.Fatalf("marker-bearing SSH = %q, want %q", got, input)
+	}
+}
+
+func TestProcessLosslessAcceptsFlowAndQuotedYAML(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "flow legacy",
+			input: `{global: {User: alice}}`,
+			want:  "Host *\n    User alice\n",
+		},
+		{
+			name:  "JSON-shaped legacy YAML",
+			input: `{"global":{"User":"alice"}}`,
+			want:  "Host *\n    User alice\n",
+		},
+		{
+			name:  "flow v3",
+			input: `{schemaVersion: 3, documents: [{nodes: [{type: directive, directive: {keyword: Host, arguments: [example]}}]}]}`,
+			want:  "Host example\n",
+		},
+		{
+			name: "quoted v3 keys",
+			input: `"schemaVersion": 3
+"documents":
+  - nodes:
+      - type: directive
+        directive:
+          keyword: Host
+          arguments: [example]
+`,
+			want: "Host example\n",
+		},
+		{
+			name: "quoted legacy key",
+			input: `"global":
+  User: alice
+`,
+			want: "Host *\n    User alice\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := Parser.ProcessLossless("YAML", test.input, Cmd.Args{ToSSH: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
