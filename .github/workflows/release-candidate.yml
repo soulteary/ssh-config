@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       expected_commit:
-        description: Full commit SHA expected at the tip of main
+        description: Full SHA currently at the tip of main (not a release tag SHA)
         required: true
         type: string
 
@@ -36,8 +36,17 @@ jobs:
             echo "::error::expected_commit must be a full 40-character commit SHA"
             exit 1
           fi
-          test "$(git rev-parse HEAD)" = "${EXPECTED_COMMIT}"
-          test "$(git rev-parse origin/main)" = "${EXPECTED_COMMIT}"
+
+          head_commit="$(git rev-parse HEAD)"
+          main_commit="$(git rev-parse origin/main)"
+          if [[ "${head_commit}" != "${EXPECTED_COMMIT}" ]]; then
+            echo "::error::expected_commit ${EXPECTED_COMMIT} does not match checked-out main ${head_commit}"
+            exit 1
+          fi
+          if [[ "${main_commit}" != "${EXPECTED_COMMIT}" ]]; then
+            echo "::error::expected_commit ${EXPECTED_COMMIT} does not match origin/main ${main_commit}"
+            exit 1
+          fi
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
