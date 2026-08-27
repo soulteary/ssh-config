@@ -9,7 +9,7 @@
 | Failed | 0 |
 | Skipped | 0 |
 | Coverage | 92.33% |
-| Threshold | 0.00% |
+| Threshold | 85.00% |
 
 ### Packages
 

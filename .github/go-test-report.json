@@ -10,7 +10,7 @@
     "covered_statements": 2035,
     "total_statements": 2204,
     "percentage": 92.33,
-    "threshold": 0
+    "threshold": 85
   },
   "packages": [
     {
