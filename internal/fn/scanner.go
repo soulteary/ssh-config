@@ -62,11 +62,15 @@ func isLegacyDirectoryConfigFile(path string) bool {
 }
 
 func hasConfigDirective(path string, accept func(string) bool) bool {
-	file, err := os.Open(path)
+	file, err := openConfigFile(path)
 	if err != nil {
 		return false
 	}
 	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return false
+	}
 
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 64*1024), maxScannedConfigLine)
@@ -101,6 +105,9 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 	}
 
 	if !info.IsDir() {
+		if !info.Mode().IsRegular() {
+			return nil, fmt.Errorf("source path %s is not a regular file", sshPath)
+		}
 		if !isFileReadable(info) {
 			return config, nil
 		}
@@ -128,6 +135,9 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			return nil
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
+			return nil
+		}
+		if !info.Mode().IsRegular() {
 			return nil
 		}
 
@@ -158,11 +168,15 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 }
 
 func ReadSingleConfig(path string) *ConfigFile {
-	file, err := os.Open(path)
+	file, err := openConfigFile(path)
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() {
+		return nil
+	}
 
 	config := &ConfigFile{
 		Path:  path,
