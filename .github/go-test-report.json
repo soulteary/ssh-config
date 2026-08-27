@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "tests": {
-    "total": 220,
-    "passed": 220,
+    "total": 225,
+    "passed": 225,
     "failed": 0,
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 2110,
-    "total_statements": 2283,
-    "percentage": 92.42,
+    "covered_statements": 2132,
+    "total_statements": 2313,
+    "percentage": 92.17,
     "threshold": 85
   },
   "packages": [
@@ -30,7 +30,7 @@
     {
       "name": "integration",
       "status": "pass",
-      "tests": 2,
+      "tests": 3,
       "failed": 0,
       "coverage": null
     },
@@ -44,16 +44,16 @@
     {
       "name": "internal/fn",
       "status": "pass",
-      "tests": 49,
+      "tests": 50,
       "failed": 0,
       "coverage": 95.97
     },
     {
       "name": "internal/parser",
       "status": "pass",
-      "tests": 48,
+      "tests": 50,
       "failed": 0,
-      "coverage": 91.63
+      "coverage": 90.99
     },
     {
       "name": "pkg/lexer",
@@ -65,9 +65,9 @@
     {
       "name": "pkg/sshconfig",
       "status": "pass",
-      "tests": 74,
+      "tests": 75,
       "failed": 0,
-      "coverage": 91.49
+      "coverage": 91.38
     }
   ],
   "failures": null
