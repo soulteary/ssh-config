@@ -82,14 +82,6 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-      - name: Upload coverage to Codecov
-        continue-on-error: true
-        uses: codecov/codecov-action@04b047e8bb82a0c002c8312c1c880fbc6a999d45 # v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: coverage.out
-          fail_ci_if_error: false
-
       - name: Vet
         run: go vet ./...
 
