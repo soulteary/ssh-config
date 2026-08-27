@@ -7,12 +7,18 @@ on:
       - "**/*.md"
       - "docs/**"
       - ".github/github-repo-card.png"
+      - ".github/coverage.svg"
+      - ".github/go-test-report.json"
+      - ".github/goreportcard.svg"
   push:
     branches: [main]
     paths-ignore:
       - "**/*.md"
       - "docs/**"
       - ".github/github-repo-card.png"
+      - ".github/coverage.svg"
+      - ".github/go-test-report.json"
+      - ".github/goreportcard.svg"
   workflow_dispatch:
 
 permissions:
@@ -25,9 +31,9 @@ concurrency:
 jobs:
   pull-request:
     if: github.event_name == 'pull_request'
-    name: PR tests and vet
+    name: PR tests and local reports
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -44,17 +50,26 @@ jobs:
       - name: Verify module files
         run: go mod tidy -diff
 
-      - name: Test
-        run: go test ./...
+      - name: Test and generate coverage report
+        uses: soulteary/go-test-report-action@a5e77d563843af6c7a0cc3c573640fc2cd94934a # v1.1.0
+        with:
+          version: v1.1.0
+          commit: "false"
 
-      - name: Vet
-        run: go vet ./...
+      - name: Generate Go quality report
+        uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
+        with:
+          version: v1.1.0
+          report: "false"
+          commit: "false"
 
   main:
     if: github.event_name != 'pull_request'
-    name: Main tests, coverage and vulnerability scan
+    name: Main tests, local reports and vulnerability scan
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -71,19 +86,27 @@ jobs:
       - name: Verify module files
         run: go mod tidy -diff
 
-      - name: Test with race detector
-        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Test with race detector and update coverage report
+        uses: soulteary/go-test-report-action@a5e77d563843af6c7a0cc3c573640fc2cd94934a # v1.1.0
+        with:
+          version: v1.1.0
+          race: "true"
+          commit: "true"
 
-      - name: Upload coverage artifact
+      - name: Upload raw test results
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: coverage-${{ github.sha }}
-          path: coverage.out
+          name: go-test-report-${{ github.sha }}
+          path: .github/test-results/
           if-no-files-found: error
           retention-days: 7
 
-      - name: Vet
-        run: go vet ./...
+      - name: Update Go quality report
+        uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
+        with:
+          version: v1.1.0
+          report: "false"
+          commit: "true"
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
