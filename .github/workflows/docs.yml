@@ -38,4 +38,4 @@ jobs:
           cache: false
 
       - name: Validate links
-        run: go test ./integration -run '^TestDocumentationLinks$'
+        run: go test ./integration -run '^TestDocumentation'
