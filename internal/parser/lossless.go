@@ -7,6 +7,7 @@ import (
 
 	Cmd "github.com/soulteary/ssh-config/v3/cmd"
 	"github.com/soulteary/ssh-config/v3/pkg/sshconfig"
+	"gopkg.in/yaml.v3"
 )
 
 // ProcessLossless converts SSH source or a v3 structured document without
@@ -60,7 +61,7 @@ func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, 
 		return schema, true, err
 	}
 
-	if looksLikeStructuredYAML(trimmed) || strings.EqualFold(fileType, "YAML") && hasYAMLContent(trimmed) {
+	if looksLikeStructuredYAML(trimmed) || strings.EqualFold(fileType, "YAML") && hasLegacyYAMLStructure(trimmed) {
 		schema, schemaErr := sshconfig.UnmarshalSchemaYAML(data)
 		if schemaErr == nil {
 			return schema, true, nil
@@ -75,11 +76,27 @@ func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, 
 	return sshconfig.Schema{}, false, nil
 }
 
-func hasYAMLContent(data []byte) bool {
-	for _, line := range strings.Split(string(data), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" && line != "---" && line != "..." && !strings.HasPrefix(line, "#") {
-			return true
+func hasLegacyYAMLStructure(data []byte) bool {
+	var document yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil || len(document.Content) == 0 {
+		return false
+	}
+	root := document.Content[0]
+	if root.Kind != yaml.MappingNode {
+		return false
+	}
+	for index := 0; index+1 < len(root.Content); index += 2 {
+		group := root.Content[index+1]
+		if group.Kind == yaml.AliasNode {
+			group = group.Alias
+		}
+		if group == nil || group.Kind != yaml.MappingNode {
+			continue
+		}
+		for field := 0; field+1 < len(group.Content); field += 2 {
+			if group.Content[field].Value == "Hosts" {
+				return true
+			}
 		}
 	}
 	return false
