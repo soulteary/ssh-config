@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestOpenSSHRoundTripEffectiveConfiguration(t *testing.T) {
@@ -149,7 +150,7 @@ func FuzzEditMarshalReparse(f *testing.F) {
 	f.Add([]byte("Host example\n    User root\n"), "IdentityFile", "~/.ssh/work")
 	f.Add([]byte("# comment without newline"), "SetEnv", "FOO=bar")
 	f.Fuzz(func(t *testing.T, input []byte, keyword, value string) {
-		if keyword == "" || strings.ContainsAny(keyword, " \t\r\n=\"'") {
+		if !utf8.ValidString(keyword) || !utf8.ValidString(value) || ValidateDirectiveInput(keyword, []string{value}, "") != nil {
 			t.Skip()
 		}
 		doc, err := Parse(input)

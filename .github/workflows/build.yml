@@ -41,6 +41,8 @@ jobs:
         run: |
           go mod tidy -diff
           test "$(go list -m -f '{{ .Path }}')" = "github.com/soulteary/ssh-config/v3"
+          command -v ssh
+          ssh -V
           go test -race ./...
           go vet ./...
           go build -trimpath -o "${RUNNER_TEMP}/ssh-config" .
