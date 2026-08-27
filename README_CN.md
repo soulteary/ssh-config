@@ -73,19 +73,19 @@ docker pull ghcr.io/soulteary/ssh-config:latest
 将当前目录的配置文件转换并保存为新的文件：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml -dest /ssh/abc.yaml
 ```
 
 如果你只想看看转换结果：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest ssh-config -lossless -to-yaml -src /ssh/test.yaml
+docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest -lossless -to-yaml -src /ssh/test.yaml
 ```
 
 如果你想使用 Linux 管道来操作文件，可以先进入 Docker 交互式命令行：
 
 ```bash
-docker run --rm -it -v `pwd`:/ssh soulteary/ssh-config:latest bash
+docker run --rm -it --entrypoint bash -v `pwd`:/ssh soulteary/ssh-config:latest
 cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 ```
 
