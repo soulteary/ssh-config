@@ -80,6 +80,13 @@ docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-co
 宿主机当前用户的 UID 和 GID，可以让生成文件直接归属当前用户。
 只向标准输出打印结果时无需设置。
 
+容器内的默认主目录为 `/home/ssh-config`。如需省略 `-src` 并读取默认
+配置路径，请将 SSH 目录以只读方式挂载到该目录：
+
+```bash
+docker run --rm -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
+```
+
 如果你只想看看转换结果：
 
 ```bash

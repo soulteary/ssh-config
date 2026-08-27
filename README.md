@@ -76,6 +76,13 @@ Passing the host UID and GID keeps files written to the bind mount owned by
 the current user. It is not required when the result is written only to
 standard output.
 
+The default home is `/home/ssh-config`. To use the default source path without
+passing `-src`, mount an SSH directory there as read-only:
+
+```bash
+docker run --rm -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
+```
+
 Just want to see the conversion results:
 
 ```bash

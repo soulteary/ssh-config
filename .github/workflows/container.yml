@@ -50,7 +50,12 @@ jobs:
         run: |
           set -euo pipefail
           test "$(docker image inspect --format '{{.Config.User}}' ssh-config:pr)" = "65532:65532"
+          docker image inspect --format '{{range .Config.Env}}{{println .}}{{end}}' ssh-config:pr | grep -qx 'HOME=/home/ssh-config'
           docker run --rm ssh-config:pr -version
+          runtime_home="$(mktemp -d)"
+          printf 'Host default\n' > "${runtime_home}/config"
+          chmod 0755 "${runtime_home}"
+          docker run --rm -v "${runtime_home}:/home/ssh-config/.ssh:ro" ssh-config:pr -to-yaml | grep -q 'schemaVersion: 3'
           if docker run --rm --entrypoint /bin/bash ssh-config:pr -c true; then
             echo "::error::runtime image unexpectedly contains Bash"
             exit 1
