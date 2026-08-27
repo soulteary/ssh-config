@@ -2,6 +2,16 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish an existing immutable v* tag instead of building a snapshot
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: Existing v* tag to publish when publish is enabled
+        required: false
+        type: string
   push:
     tags:
       - "v*.*.*"
@@ -24,6 +34,37 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && inputs.release_tag || github.ref }}
+
+      - name: Resolve release mode
+        id: release
+        shell: bash
+        env:
+          INPUT_PUBLISH: ${{ inputs.publish || false }}
+          INPUT_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          publish=false
+          tag=""
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            publish=true
+            tag="${GITHUB_REF_NAME}"
+          elif [[ "${INPUT_PUBLISH}" == "true" ]]; then
+            publish=true
+            tag="${INPUT_RELEASE_TAG}"
+          fi
+
+          if [[ "${publish}" == "true" ]]; then
+            if [[ ! "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "::error::release_tag must be an existing semantic v* tag"
+              exit 1
+            fi
+            git rev-parse --verify "refs/tags/${tag}^{commit}" >/dev/null
+            test "$(git rev-parse HEAD)" = "$(git rev-parse "refs/tags/${tag}^{commit}")"
+          fi
+
+          printf 'publish=%s\n' "${publish}" >> "${GITHUB_OUTPUT}"
+          printf 'tag=%s\n' "${tag}" >> "${GITHUB_OUTPUT}"
 
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -55,15 +96,17 @@ jobs:
         run: govulncheck ./...
 
       - name: Verify tagged Go module
-        if: startsWith(github.ref, 'refs/tags/')
+        if: steps.release.outputs.publish == 'true'
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
           smoke_dir="$(mktemp -d)"
-          GOBIN="${smoke_dir}/bin" go install "github.com/soulteary/ssh-config/v3@${GITHUB_REF_NAME}"
+          GOBIN="${smoke_dir}/bin" go install "github.com/soulteary/ssh-config/v3@${RELEASE_TAG}"
           "${smoke_dir}/bin/ssh-config" -version
           cd "${smoke_dir}"
           go mod init release-smoke
-          go get "github.com/soulteary/ssh-config/v3@${GITHUB_REF_NAME}"
+          go get "github.com/soulteary/ssh-config/v3@${RELEASE_TAG}"
           printf '%s\n' \
             'package main' \
             'import "github.com/soulteary/ssh-config/v3/pkg/sshconfig"' \
@@ -78,14 +121,14 @@ jobs:
           args: check
 
       - name: Login to Docker Hub
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: steps.release.outputs.publish == 'true'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Login to GitHub Container Registry
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: steps.release.outputs.publish == 'true'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
@@ -93,7 +136,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build release snapshot
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' && steps.release.outputs.publish != 'true'
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
         with:
           version: v2.18.0
@@ -103,10 +146,12 @@ jobs:
 
       - name: Select release notes
         id: release-notes
-        if: success() && startsWith(github.ref, 'refs/tags/')
+        if: success() && steps.release.outputs.publish == 'true'
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          notes="docs/releases/${GITHUB_REF_NAME}.md"
+          notes="docs/releases/${RELEASE_TAG}.md"
           if [[ -f "${notes}" ]]; then
             printf 'args=release --clean --release-notes %s\n' "${notes}" >> "${GITHUB_OUTPUT}"
           else
@@ -115,7 +160,7 @@ jobs:
 
       - name: Publish release
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
-        if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: success() && steps.release.outputs.publish == 'true'
         with:
           version: v2.18.0
           args: ${{ steps.release-notes.outputs.args }}
@@ -123,10 +168,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Smoke-test published container
-        if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        if: success() && steps.release.outputs.publish == 'true'
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         run: |
-          image="ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME}"
+          image="ghcr.io/${GITHUB_REPOSITORY}:${RELEASE_TAG}"
           docker run --rm "${image}" -version
 
           smoke_dir="$(mktemp -d)"
@@ -140,4 +187,4 @@ jobs:
           test "$(stat -c '%u:%g' "${smoke_dir}/config.yaml")" = "$(id -u):$(id -g)"
           grep -q '^schemaVersion: 3$' "${smoke_dir}/config.yaml"
 
-          docker run --rm "soulteary/ssh-config:${GITHUB_REF_NAME}" -version
+          docker run --rm "soulteary/ssh-config:${RELEASE_TAG}" -version
