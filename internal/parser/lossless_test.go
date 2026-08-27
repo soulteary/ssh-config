@@ -81,6 +81,19 @@ func TestProcessLosslessMigratesCustomLegacyYAMLGroup(t *testing.T) {
 	}
 }
 
+func TestProcessLosslessPreservesSSHThatLooksLikeYAML(t *testing.T) {
+	t.Parallel()
+	input := []byte("RemoteCommand echo foo: {}\n")
+
+	got, err := Parser.ProcessLossless("YAML", string(input), Cmd.Args{ToSSH: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, input) {
+		t.Fatalf("YAML-like SSH = %q, want %q", got, input)
+	}
+}
+
 func TestProcessLosslessMigratesLegacyJSON(t *testing.T) {
 	t.Parallel()
 	input := `[{"Name":"example","Data":{"User":"root"}}]`
