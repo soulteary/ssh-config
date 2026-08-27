@@ -45,8 +45,10 @@ func MigrateLegacyYAML(data []byte, path string) (Schema, error) {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy YAML: %w", err)
 	}
 	var output bytes.Buffer
-	if err := writeLegacyHost(&output, "*", "", legacy.Global); err != nil {
-		return Schema{}, err
+	if len(legacy.Global) > 0 {
+		if err := writeLegacyHost(&output, "*", "", legacy.Global); err != nil {
+			return Schema{}, err
+		}
 	}
 	groupNames := orderedLegacyMapKeys(order.groups, legacy.Groups)
 	for _, groupName := range groupNames {
@@ -166,8 +168,8 @@ func schemaFromLegacyBytes(data []byte, path string) (Schema, error) {
 }
 
 func writeLegacyHost(output *bytes.Buffer, name, notes string, config map[string]string) error {
-	if name == "" || len(config) == 0 {
-		return nil
+	if name == "" {
+		return fmt.Errorf("sshconfig: legacy host name is empty")
 	}
 	if err := ValidateDirectiveInput("Host", []string{name}, ""); err != nil {
 		return fmt.Errorf("sshconfig: invalid legacy host %q: %w", name, err)
