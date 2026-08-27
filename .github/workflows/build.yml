@@ -11,7 +11,8 @@ permissions:
   packages: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-publish
+  queue: max
   cancel-in-progress: false
 
 jobs:
