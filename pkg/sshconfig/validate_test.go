@@ -85,3 +85,56 @@ func TestUnknownDirectivePolicies(t *testing.T) {
 		t.Fatalf("error issues = %#v", fail)
 	}
 }
+
+func TestValidateDropsDiagnosticsForRepairedOrRemovedNodes(t *testing.T) {
+	t.Parallel()
+
+	for _, action := range []string{"replace", "remove"} {
+		action := action
+		t.Run(action, func(t *testing.T) {
+			doc, err := Parse([]byte("Host example\nUser \"unfinished\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := doc.Validate(ValidateOptions{}); len(got) == 0 {
+				t.Fatal("invalid source did not produce a diagnostic")
+			}
+
+			switch action {
+			case "replace":
+				if err := doc.ReplaceDirective(1, "User", "deploy"); err != nil {
+					t.Fatal(err)
+				}
+			case "remove":
+				if err := doc.RemoveNode(1); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			for _, issue := range doc.Validate(ValidateOptions{}) {
+				if issue.Code == "invalid-syntax" {
+					t.Fatalf("stale syntax issue after %s: %#v", action, issue)
+				}
+			}
+		})
+	}
+}
+
+func TestValidatePreservesPositionAfterDirectiveReplacement(t *testing.T) {
+	t.Parallel()
+
+	doc, err := Parse([]byte("Host example\nUser deploy\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := doc.ReplaceDirective(1, "FutureOption", "value"); err != nil {
+		t.Fatal(err)
+	}
+	issues := doc.Validate(ValidateOptions{UnknownDirective: UnknownDirectiveError})
+	if len(issues) != 1 || issues[0].Code != "unknown-directive" {
+		t.Fatalf("issues = %#v", issues)
+	}
+	if issues[0].Position.Line != 2 || issues[0].Position.Column != 1 {
+		t.Fatalf("position = %#v, want line 2 column 1", issues[0].Position)
+	}
+}

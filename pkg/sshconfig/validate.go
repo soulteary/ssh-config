@@ -47,8 +47,15 @@ func (d *Document) Validate(options ValidateOptions) []ValidationIssue {
 	}
 	issues := make([]ValidationIssue, 0, len(d.diagnostics))
 	for _, diagnostic := range d.diagnostics {
+		nodeID := d.nodeIDAtOffset(diagnostic.Position.Offset)
+		if d.removed[nodeID] {
+			continue
+		}
+		if _, replaced := d.replacement[nodeID]; replaced {
+			continue
+		}
 		issues = append(issues, ValidationIssue{
-			NodeID:   d.nodeIDAtOffset(diagnostic.Position.Offset),
+			NodeID:   nodeID,
 			Position: diagnostic.Position,
 			Severity: SeverityError,
 			Code:     "invalid-syntax",
