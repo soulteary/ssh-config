@@ -482,6 +482,81 @@ func TestMigrateLegacyFormatsPreserveArgumentSemantics(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyFormatsPreserveEmptyHosts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		input []byte
+		load  func([]byte, string) (Schema, error)
+	}{
+		{
+			name:  "JSON",
+			input: []byte(`[{"Name":"empty","Notes":"keep this note"}]`),
+			load:  MigrateLegacyJSON,
+		},
+		{
+			name:  "YAML",
+			input: []byte("Group empty:\n  Hosts:\n    empty:\n      Notes: keep this note\n"),
+			load:  MigrateLegacyYAML,
+		},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			schema, err := test.load(test.input, "config")
+			if err != nil {
+				t.Fatalf("migration error = %v", err)
+			}
+			document, err := schema.Document("config")
+			if err != nil {
+				t.Fatal(err)
+			}
+			output, err := document.MarshalPreserve()
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, expected := range []string{"# keep this note\n", "Host empty\n"} {
+				if !strings.Contains(string(output), expected) {
+					t.Fatalf("migrated empty host missing %q:\n%s", expected, output)
+				}
+			}
+		})
+	}
+}
+
+func TestMigrateLegacyFormatsRejectMissingHostName(t *testing.T) {
+	t.Parallel()
+
+	if _, err := MigrateLegacyJSON([]byte(`[{"Data":{"User":"deploy"}}]`), "config"); err == nil || !strings.Contains(err.Error(), "host name is empty") {
+		t.Fatalf("MigrateLegacyJSON() error = %v, want empty host name error", err)
+	}
+	if _, err := MigrateLegacyYAML([]byte("Group empty:\n  Hosts:\n    '':\n      config:\n        User: deploy\n"), "config"); err == nil || !strings.Contains(err.Error(), "host name is empty") {
+		t.Fatalf("MigrateLegacyYAML() error = %v, want empty host name error", err)
+	}
+}
+
+func TestMigrateLegacyYAMLDoesNotInventEmptyGlobalHost(t *testing.T) {
+	t.Parallel()
+
+	schema, err := MigrateLegacyYAML([]byte("Group empty:\n  Hosts:\n    empty: {}\n"), "config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := schema.Document("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := document.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(output), "Host *") {
+		t.Fatalf("migration invented an empty global Host block:\n%s", output)
+	}
+}
+
 func TestMigrateLegacyFormatsRejectCrossLineFields(t *testing.T) {
 	t.Parallel()
 
