@@ -13,7 +13,7 @@ import (
 // routing it through the legacy map representation.
 func ProcessLossless(fileType, userInput string, args Cmd.Args) ([]byte, error) {
 	data := []byte(userInput)
-	schema, structured, err := decodeLosslessInput(data)
+	schema, structured, err := decodeLosslessInput(fileType, data)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func ProcessLossless(fileType, userInput string, args Cmd.Args) ([]byte, error) 
 	}
 }
 
-func decodeLosslessInput(data []byte) (sshconfig.Schema, bool, error) {
+func decodeLosslessInput(fileType string, data []byte) (sshconfig.Schema, bool, error) {
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
 		return sshconfig.Schema{}, false, nil
@@ -60,7 +60,7 @@ func decodeLosslessInput(data []byte) (sshconfig.Schema, bool, error) {
 		return schema, true, err
 	}
 
-	if looksLikeStructuredYAML(trimmed) {
+	if looksLikeStructuredYAML(trimmed) || strings.EqualFold(fileType, "YAML") && hasYAMLContent(trimmed) {
 		schema, schemaErr := sshconfig.UnmarshalSchemaYAML(data)
 		if schemaErr == nil {
 			return schema, true, nil
@@ -73,6 +73,16 @@ func decodeLosslessInput(data []byte) (sshconfig.Schema, bool, error) {
 	}
 
 	return sshconfig.Schema{}, false, nil
+}
+
+func hasYAMLContent(data []byte) bool {
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && line != "---" && line != "..." && !strings.HasPrefix(line, "#") {
+			return true
+		}
+	}
+	return false
 }
 
 func looksLikeStructuredYAML(data []byte) bool {
