@@ -18,6 +18,7 @@ package fn
 
 import (
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"io"
 	"os"
@@ -115,21 +116,11 @@ func GetJSONData(input string) (jsonConfig []Define.HostConfigForJSON) {
 // GetJSONDataStrict decodes exactly one legacy JSON document and rejects
 // unknown fields.
 func GetJSONDataStrict(input string) (jsonConfig []Define.HostConfigForJSON, err error) {
-	decoder := json.NewDecoder(strings.NewReader(input))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&jsonConfig); err != nil {
-		return jsonConfig, err
-	}
-
-	var trailing json.RawMessage
-	switch err := decoder.Decode(&trailing); err {
-	case io.EOF:
-		return jsonConfig, nil
-	case nil:
-		return jsonConfig, fmt.Errorf("unexpected JSON value after document")
-	default:
-		return jsonConfig, fmt.Errorf("invalid trailing JSON data: %w", err)
-	}
+	err = jsonv2.Unmarshal([]byte(input), &jsonConfig,
+		jsonv2.RejectUnknownMembers(true),
+		jsonv2.MatchCaseInsensitiveNames(true),
+	)
+	return jsonConfig, err
 }
 
 func DetectStringType(input string) string {

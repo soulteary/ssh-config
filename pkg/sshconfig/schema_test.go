@@ -398,6 +398,24 @@ func TestMigrateLegacyFormatsRejectCrossLineFields(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyJSONRejectsDuplicateFields(t *testing.T) {
+	t.Parallel()
+	tests := map[string]string{
+		"host name":        `[{"Name":"safe","Name":"evil","Data":{"User":"alice"}}]`,
+		"case folded name": `[{"Name":"safe","name":"evil","Data":{"User":"alice"}}]`,
+		"directive":        `[{"Name":"example","Data":{"User":"alice","User":"root"}}]`,
+	}
+	for name, input := range tests {
+		name, input := name, input
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := MigrateLegacyJSON([]byte(input), "config"); err == nil {
+				t.Fatal("MigrateLegacyJSON() accepted duplicate fields")
+			}
+		})
+	}
+}
+
 func TestMigrateLegacyYAMLAllowsMergeOverrides(t *testing.T) {
 	t.Parallel()
 	inputs := []string{

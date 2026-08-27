@@ -2,7 +2,7 @@ package sshconfig
 
 import (
 	"bytes"
-	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"sort"
 	"strings"
@@ -138,13 +138,11 @@ func orderedLegacyMapKeys[V any](preferred []string, values map[string]V) []stri
 // MigrateLegacyJSON converts the previous host-array JSON format into v3.
 func MigrateLegacyJSON(data []byte, path string) (Schema, error) {
 	var hosts []legacyHost
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&hosts); err != nil {
+	if err := jsonv2.Unmarshal(data, &hosts,
+		jsonv2.RejectUnknownMembers(true),
+		jsonv2.MatchCaseInsensitiveNames(true),
+	); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode legacy JSON: %w", err)
-	}
-	if err := ensureJSONEOF(decoder); err != nil {
-		return Schema{}, err
 	}
 	var output bytes.Buffer
 	for _, host := range hosts {
