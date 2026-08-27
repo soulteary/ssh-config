@@ -176,18 +176,50 @@ func expandIncludePattern(pattern string, options ResolveOptions) (string, error
 }
 
 func expandEnvironment(value string, environment map[string]string) (string, error) {
-	var missing string
-	expanded := os.Expand(value, func(name string) string {
-		result, ok := environment[name]
-		if !ok && missing == "" {
-			missing = name
+	var out strings.Builder
+	for index := 0; index < len(value); {
+		if value[index] != '$' || index+1 >= len(value) || value[index+1] != '{' {
+			out.WriteByte(value[index])
+			index++
+			continue
 		}
-		return result
-	})
-	if missing != "" {
-		return "", fmt.Errorf("environment variable %s is not set", missing)
+
+		endOffset := strings.IndexByte(value[index+2:], '}')
+		if endOffset < 0 {
+			return "", fmt.Errorf("unterminated environment variable expansion")
+		}
+		end := index + 2 + endOffset
+		name := value[index+2 : end]
+		if !validEnvironmentName(name) {
+			return "", fmt.Errorf("invalid environment variable name %q", name)
+		}
+		replacement, ok := environment[name]
+		if !ok {
+			return "", fmt.Errorf("environment variable %s is not set", name)
+		}
+		out.WriteString(replacement)
+		index = end + 1
 	}
-	return expanded, nil
+	return out.String(), nil
+}
+
+func validEnvironmentName(name string) bool {
+	if name == "" || !isEnvironmentNameStart(name[0]) {
+		return false
+	}
+	for index := 1; index < len(name); index++ {
+		character := name[index]
+		if !isEnvironmentNameStart(character) && (character < '0' || character > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func isEnvironmentNameStart(character byte) bool {
+	return character == '_' ||
+		(character >= 'a' && character <= 'z') ||
+		(character >= 'A' && character <= 'Z')
 }
 
 func expandPercentTokens(value string, tokens map[byte]string) (string, error) {
