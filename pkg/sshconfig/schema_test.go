@@ -215,6 +215,15 @@ func TestSchemaStrictValidation(t *testing.T) {
 	if _, err := UnmarshalSchemaYAML([]byte("schemaVersion: 3\ndocuments: []\nextra: true\n")); err == nil {
 		t.Fatal("YAML accepted an unknown field")
 	}
+	duplicateJSON := []string{
+		`{"schemaVersion":2,"schemaVersion":3,"documents":[{"nodes":[]}]}`,
+		`{"schemaVersion":3,"documents":[{"nodes":[{"type":"directive","directive":{"keyword":"ProxyCommand","keyword":"Host","arguments":["safe"]}}]}]}`,
+	}
+	for _, input := range duplicateJSON {
+		if _, err := UnmarshalSchemaJSON([]byte(input)); err == nil {
+			t.Fatalf("JSON accepted duplicate fields: %s", input)
+		}
+	}
 	badVersion := Schema{SchemaVersion: 2, Documents: []SchemaDocument{{}}}
 	if err := badVersion.Validate(); err == nil {
 		t.Fatal("schema accepted an old version")
