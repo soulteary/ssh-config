@@ -11,6 +11,9 @@ import (
 func validateLegacyHostConfigs(configs []Define.HostConfig) error {
 	for index, host := range configs {
 		name := host.Extra.Prefix + host.Name
+		if strings.TrimSpace(name) == "" {
+			return fmt.Errorf("legacy host %d: host name is empty", index)
+		}
 		if err := sshconfig.ValidateDirectiveInput("Host", []string{name}, ""); err != nil {
 			return fmt.Errorf("legacy host %d: %w", index, err)
 		}

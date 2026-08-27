@@ -54,6 +54,60 @@ Group work:
 	}
 }
 
+func TestGroupYAMLConfigPreservesHostWithoutConfig(t *testing.T) {
+	t.Parallel()
+
+	configs, err := Parser.GroupYAMLConfigStrict(`Group work:
+  Hosts:
+    example: {}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(configs) != 1 || configs[0].Name != "example" {
+		t.Fatalf("GroupYAMLConfigStrict() = %#v, want one empty example host", configs)
+	}
+
+	output := string(Parser.ConvertToSSH(configs))
+	if !strings.Contains(output, "Host example\n") {
+		t.Fatalf("ConvertToSSH() dropped empty host:\n%s", output)
+	}
+}
+
+func TestLegacyStructuredConfigRejectsMissingHostName(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		parse func() error
+	}{
+		{
+			name: "JSON",
+			parse: func() error {
+				_, err := Parser.GroupJSONConfigStrict(`[{"Data":{"User":"deploy"}}]`)
+				return err
+			},
+		},
+		{
+			name: "YAML",
+			parse: func() error {
+				_, err := Parser.GroupYAMLConfigStrict("Group empty:\n  Hosts:\n    '':\n      config:\n        User: deploy\n")
+				return err
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := test.parse()
+			if err == nil || !strings.Contains(err.Error(), "host name is empty") {
+				t.Fatalf("parse error = %v, want empty host name rejection", err)
+			}
+		})
+	}
+}
+
 func TestGroupSSHConfigRejectsLossyLegacyInputs(t *testing.T) {
 	t.Parallel()
 

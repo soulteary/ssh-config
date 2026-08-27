@@ -183,8 +183,8 @@ func GroupYAMLConfigStrict(input string) ([]Define.HostConfig, error) {
 							}
 						}
 					}
-					hostConfigs = append(hostConfigs, hostConfig)
 				}
+				hostConfigs = append(hostConfigs, hostConfig)
 			}
 		}
 	}
