@@ -84,8 +84,11 @@ docker run --rm -it --user "$(id -u):$(id -g)" -v "$(pwd):/ssh" soulteary/ssh-co
 配置路径，请将 SSH 目录以只读方式挂载到该目录：
 
 ```bash
-docker run --rm -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
+docker run --rm --user "$(id -u):$(id -g)" -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
 ```
+
+宿主 UID/GID 用于读取常见的私有 SSH 权限（目录 `0700`、配置文件
+`0600`）。
 
 如果你只想看看转换结果：
 

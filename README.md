@@ -80,8 +80,11 @@ The default home is `/home/ssh-config`. To use the default source path without
 passing `-src`, mount an SSH directory there as read-only:
 
 ```bash
-docker run --rm -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
+docker run --rm --user "$(id -u):$(id -g)" -v "$HOME/.ssh:/home/ssh-config/.ssh:ro" soulteary/ssh-config:latest -to-yaml
 ```
+
+The host UID/GID is required for the usual private `~/.ssh` permissions
+(`0700` directory and `0600` config).
 
 Just want to see the conversion results:
 
