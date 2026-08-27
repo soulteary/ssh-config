@@ -97,6 +97,7 @@ cat /ssh/test.yaml | ssh-config -lossless -to-yaml
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。
 - `-src`: 指定输入文件；省略时无损模式读取 `~/.ssh/config`，旧模式扫描 `~/.ssh`
 - `-dest`: 指定要保存的配置文件路径；父目录必须已存在，省略时将转换结果写入标准输出
+- `-document-path`: 当 `-to-ssh` 读取包含多个文档的 v3 Schema 时，按 `path` 选择要转换的文档
 - `-legacy`: 使用原有的有损 map/array 格式，并启用目录扫描。
 - `-lossless`: 已弃用的兼容参数；v3 已默认使用无损转换。
 - `-help`: 查看程序命令行帮助

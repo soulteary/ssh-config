@@ -37,7 +37,7 @@ func ProcessLossless(fileType, userInput string, args Cmd.Args) ([]byte, error) 
 	case args.ToJSON:
 		return sshconfig.MarshalSchemaJSON(schema)
 	case args.ToSSH:
-		document, err := schema.Document("")
+		document, err := schema.Document(args.DocumentPath)
 		if err != nil {
 			return nil, err
 		}
