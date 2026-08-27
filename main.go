@@ -59,6 +59,19 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	}
 
 	pipeMode := deps.CheckUseStdin()
+	if !pipeMode && args.Src == "" {
+		if deps.UserHomeDir == nil {
+			err := fmt.Errorf("user home directory lookup is unavailable")
+			deps.errorln("Error: getting user home directory:", err)
+			return err
+		}
+		homeDir, err := deps.UserHomeDir()
+		if err != nil {
+			deps.errorln("Error: getting user home directory:", err)
+			return err
+		}
+		args.Src = defaultSource(homeDir, args.Legacy)
+	}
 	var userInput string
 	if pipeMode {
 		if deps.ReadStdin != nil {
@@ -175,6 +188,7 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 		},
 		Process:       Parser.Process,
 		CheckUseStdin: func() bool { return Cmd.CheckUseStdin(os.Stdin.Stat) },
+		UserHomeDir:   userHomeDir,
 	}
 	args := Cmd.ParseArgs()
 	if args.ShowHelp {
@@ -184,18 +198,6 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 	if args.Version {
 		fmt.Print(versionText())
 		return
-	}
-
-	// Lossless conversion works on one physical file so source bytes and file
-	// boundaries remain unambiguous. Legacy mode retains the v2 directory scan.
-	if args.Src == "" {
-		homeDir, err := userHomeDir()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error: getting user home directory:", err)
-			exit(1)
-			return
-		}
-		args.Src = defaultSource(homeDir, args.Legacy)
 	}
 
 	// default to YAML when no conversion flag is provided

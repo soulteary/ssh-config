@@ -240,6 +240,26 @@ func TestRunDefaultPipePreservesInputAndOutputBytes(t *testing.T) {
 	}
 }
 
+func TestRunPipeDoesNotRequireHomeDirectory(t *testing.T) {
+	input := []byte("Host example\n")
+	err := Run(Cmd.Args{ToYAML: true}, Dependencies{
+		Println:       func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin: func() bool { return true },
+		ReadStdin:     func() ([]byte, error) { return input, nil },
+		UserHomeDir: func() (string, error) {
+			t.Fatal("piped input queried the user home directory")
+			return "", errors.New("unreachable")
+		},
+		Process: func(_ string, got string, _ Cmd.Args) ([]byte, error) {
+			return []byte(got), nil
+		},
+		WriteOutput: func([]byte) error { return nil },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestRunDefaultModeReadsItsStructuredOutput(t *testing.T) {
 	original := []byte("Host=example\r\nIdentityFile first\r\nIdentityFile second")
 	formats := []struct {
