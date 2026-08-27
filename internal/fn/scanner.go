@@ -19,6 +19,7 @@ package fn
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,6 +38,31 @@ type ConfigFile struct {
 
 type SSHConfig struct {
 	Configs map[string]*ConfigFile // key: 配置文件路径
+}
+
+// ReadConfigFile reads one physical config without passing it through the
+// legacy line scanner. This preserves long lines and every input byte for the
+// default lossless conversion path.
+func ReadConfigFile(path string) ([]byte, error) {
+	file, err := openConfigFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("open config file %s: %w", path, err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("inspect config file %s: %w", path, err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("source path %s is not a regular file", path)
+	}
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("read config file %s: %w", path, err)
+	}
+	return content, nil
 }
 
 func IsExcluded(filename string) bool {

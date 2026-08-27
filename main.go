@@ -41,6 +41,7 @@ type Dependencies struct {
 	Println               func(...interface{}) (n int, err error)
 	PrintErr              func(...interface{}) (n int, err error)
 	GetContent            func(string) ([]byte, error)
+	GetLosslessContent    func(string) ([]byte, error)
 	SaveFile              func(string, []byte) error
 	SaveLossless          func(string, []byte) error
 	GetUserInputFromStdin func() string
@@ -94,7 +95,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 			return fmt.Errorf("%s", notValidReason)
 		}
 
-		content, err := deps.GetContent(args.Src)
+		getContent := deps.GetContent
+		if !args.Legacy && deps.GetLosslessContent != nil {
+			getContent = deps.GetLosslessContent
+		}
+		content, err := getContent(args.Src)
 		if err != nil {
 			deps.errorln("Error reading file:", err)
 			return err
@@ -170,6 +175,7 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 			return fmt.Fprintln(os.Stderr, values...)
 		},
 		GetContent:            Fn.GetPathContent,
+		GetLosslessContent:    Fn.ReadConfigFile,
 		SaveFile:              atomicSave,
 		SaveLossless:          atomicSave,
 		GetUserInputFromStdin: Fn.GetUserInputFromStdin,
