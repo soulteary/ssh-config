@@ -15,7 +15,7 @@ SSH Config Tool 是一个用于管理 SSH 配置文件的命令行工具。它�
 - 通过 `-legacy` 保留原有 map 格式转换和目录扫描能力
 - 支持从文件输入或标准输入(stdin)读取配置
 - 支持输出到文件或标准输出(stdout)
-- 自动检测输入格式(YAML/JSON/SSH Config)
+- 自动检测输入格式(YAML/JSON/SSH Config)；默认无损模式保留底层 SSH 文档字节，仅 `-legacy` 会整理末尾空行
 
 ## 安装
 
