@@ -122,4 +122,20 @@ jobs:
 
       - name: Smoke-test published container
         if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-        run: docker run --rm "ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME}" -version
+        shell: bash
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_REF_NAME}"
+          docker run --rm "${image}" -version
+
+          smoke_dir="$(mktemp -d)"
+          printf 'Host smoke\n    User audit\n' > "${smoke_dir}/config"
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --volume "${smoke_dir}:/ssh" \
+            "${image}" \
+            -to-yaml -src /ssh/config -dest /ssh/config.yaml
+          test -r "${smoke_dir}/config.yaml"
+          test "$(stat -c '%u:%g' "${smoke_dir}/config.yaml")" = "$(id -u):$(id -g)"
+          grep -q '^schemaVersion: 3$' "${smoke_dir}/config.yaml"
+
+          docker run --rm "soulteary/ssh-config:${GITHUB_REF_NAME}" -version
