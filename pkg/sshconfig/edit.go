@@ -34,7 +34,7 @@ func (d *Document) ReplaceDirective(id NodeID, keyword string, arguments ...stri
 	}
 	d.replacement[id] = d.renderReplacement(*node, keyword, arguments)
 	node.Kind = NodeDirective
-	node.Directive = syntheticDirective(keyword, arguments)
+	node.Directive = syntheticDirectiveAt(keyword, arguments, node.original.Keyword.Position)
 	d.removed[id] = false
 	return nil
 }
@@ -196,11 +196,16 @@ func QuoteArgument(argument string) string {
 }
 
 func syntheticDirective(keyword string, arguments []string) *Directive {
+	return syntheticDirectiveAt(keyword, arguments, Position{})
+}
+
+func syntheticDirectiveAt(keyword string, arguments []string, position Position) *Directive {
 	parsed := make([]Argument, 0, len(arguments))
 	for _, argument := range arguments {
 		parsed = append(parsed, Argument{Value: argument})
 	}
 	return &Directive{
+		Keyword:      Token{Position: position},
 		KeywordValue: strings.ToLower(keyword),
 		Arguments:    parsed,
 	}
