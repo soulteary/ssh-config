@@ -1,5 +1,7 @@
 testdata2
 coverage.*
+!.github/coverage.svg
+.github/test-results/
 test.yaml
 test.json
 test.cfg
