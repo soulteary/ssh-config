@@ -476,6 +476,24 @@ func TestMainWithDependencies(t *testing.T) {
 				return "", errors.New("home must not be queried")
 			},
 		},
+		{
+			name:          "Positional argument stops later option parsing",
+			args:          []string{"cmd", "input.yaml", "-version"},
+			expectedError: "Unexpected positional arguments: input.yaml -version\n",
+			expectedExit:  2,
+			mockHomeDir: func() (string, error) {
+				return "", errors.New("home must not be queried")
+			},
+		},
+		{
+			name:          "Help does not hide a positional argument",
+			args:          []string{"cmd", "-help", "extra"},
+			expectedError: "Unexpected positional arguments: extra\n",
+			expectedExit:  2,
+			mockHomeDir: func() (string, error) {
+				return "", errors.New("home must not be queried")
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -92,6 +92,12 @@ func TestCheckConvertArgvValid(t *testing.T) {
 			wantResult: false,
 			wantDesc:   "Please specify either -to-yaml or -to-ssh or -to-json",
 		},
+		{
+			name:       "Positional arguments are rejected",
+			args:       Cmd.Args{ToYAML: true, Positionals: []string{"input.yaml", "-to-json"}},
+			wantResult: false,
+			wantDesc:   "Unexpected positional arguments: input.yaml -to-json",
+		},
 	}
 
 	for _, tt := range tests {
@@ -314,6 +320,13 @@ func TestParseArgs(t *testing.T) {
 				Src:      "input.yaml",
 				Dest:     "",
 				ShowHelp: false,
+			},
+		},
+		{
+			name: "Keep all arguments after the first positional",
+			args: []string{"input.yaml", "-to-json"},
+			expected: Cmd.Args{
+				Positionals: []string{"input.yaml", "-to-json"},
 			},
 		},
 	}

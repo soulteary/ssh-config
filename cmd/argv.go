@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -45,6 +46,9 @@ type Args struct {
 	DocumentPath string
 	ShowHelp     bool
 	Version      bool
+	// Positionals contains arguments that were not parsed as flags. The CLI
+	// does not accept positional arguments, so callers must reject this list.
+	Positionals []string
 }
 
 const (
@@ -77,6 +81,9 @@ func ParseArgs() Args {
 	once.Do(func() {
 		initFlags()
 		flag.Parse()
+		if remaining := flag.Args(); len(remaining) > 0 {
+			args.Positionals = append([]string(nil), remaining...)
+		}
 	})
 	return args
 }
@@ -111,6 +118,10 @@ func CheckUseStdin(osStdinStat func() (fs.FileInfo, error)) bool {
 }
 
 func CheckConvertArgvValid(args Args) (result bool, desc string) {
+	if len(args.Positionals) > 0 {
+		return false, fmt.Sprintf("Unexpected positional arguments: %s", strings.Join(args.Positionals, " "))
+	}
+
 	trueCount := 0
 	if args.ToJSON {
 		trueCount++
