@@ -313,6 +313,175 @@ func TestSchemaStrictValidation(t *testing.T) {
 	}
 }
 
+func TestSchemaRejectsInvalidEnvelopeAndMarshalInput(t *testing.T) {
+	t.Parallel()
+	encode := func(raw string) string {
+		return base64.StdEncoding.EncodeToString([]byte(raw))
+	}
+	tests := []struct {
+		name   string
+		schema Schema
+		want   string
+	}{
+		{name: "no documents", schema: Schema{SchemaVersion: SchemaVersion}, want: "no documents"},
+		{
+			name: "duplicate path",
+			schema: NewSchema(
+				SchemaDocument{Path: "config"},
+				SchemaDocument{Path: "config"},
+			),
+			want: "duplicate schema document path",
+		},
+		{
+			name:   "unknown node type",
+			schema: NewSchema(SchemaDocument{Nodes: []SchemaNode{{Type: "future", RawBase64: encode("data\n")}}}),
+			want:   "unknown type",
+		},
+		{
+			name:   "empty keyword",
+			schema: NewSchema(SchemaDocument{Nodes: []SchemaNode{{Type: "directive", Directive: &SchemaDirective{}}}}),
+			want:   "empty keyword",
+		},
+		{
+			name:   "empty directive node",
+			schema: NewSchema(SchemaDocument{Nodes: []SchemaNode{{Type: "directive"}}}),
+			want:   "no directive or raw bytes",
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			if err := test.schema.Validate(); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("Validate() error = %v, want substring %q", err, test.want)
+			}
+			if _, err := MarshalSchemaJSON(test.schema); err == nil {
+				t.Fatal("MarshalSchemaJSON() accepted an invalid schema")
+			}
+			if _, err := MarshalSchemaYAML(test.schema); err == nil {
+				t.Fatal("MarshalSchemaYAML() accepted an invalid schema")
+			}
+		})
+	}
+}
+
+func TestSchemaDocumentReportsUnknownPath(t *testing.T) {
+	t.Parallel()
+	schema := NewSchema(SchemaDocument{Path: "config"})
+	if _, err := schema.Document("missing"); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("Document() error = %v, want missing path error", err)
+	}
+}
+
+func TestSchemaEditedDirectivePreservesLineEndingsAndNormalizesComments(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "LF", input: "Host old\n", want: "Host new # migrated\n"},
+		{name: "CRLF", input: "Host old\r\n", want: "Host new # migrated\r\n"},
+		{name: "CR", input: "Host old\r", want: "Host new # migrated\r"},
+		{name: "no final newline", input: "Host old", want: "Host new # migrated"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			document, err := Parse([]byte(test.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			schemaDocument, err := document.ToSchema("")
+			if err != nil {
+				t.Fatal(err)
+			}
+			schemaDocument.Nodes[0].Directive.Arguments = []string{"new"}
+			schemaDocument.Nodes[0].Directive.Comment = "migrated"
+			reconstructed, err := schemaDocument.Document()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := reconstructed.MarshalPreserve()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != test.want {
+				t.Fatalf("edited directive = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestValidateLegacyYAMLRejectsUnknownAndNonStringFields(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{name: "unknown group field", input: "Group work:\n  Unknown: true\n", want: "unknown YAML field"},
+		{name: "unknown host field", input: "Group work:\n  Hosts:\n    example:\n      Unknown: true\n", want: "unknown YAML field"},
+		{name: "unknown extra field", input: "Group work:\n  Hosts:\n    example:\n      Extra:\n        suffix: invalid\n", want: "unknown YAML field"},
+		{name: "non-string root key", input: "1: {}\n", want: "non-string YAML field in document"},
+		{name: "non-string group key", input: "Group work:\n  1: value\n", want: "non-string YAML field in Group work"},
+		{name: "non-string host key", input: "Group work:\n  Hosts:\n    1: {}\n", want: "non-string YAML field in Group work.Hosts"},
+		{name: "non-string config key", input: "Group work:\n  Hosts:\n    example:\n      config:\n        1: value\n", want: "non-string YAML field in Group work.Hosts.example.config"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			err := ValidateLegacyYAML([]byte(test.input))
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("ValidateLegacyYAML() error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestMigrateLegacyYAMLResolvesMergeSequence(t *testing.T) {
+	t.Parallel()
+	input := []byte(`Group first: &first
+  Prefix: first-
+  Common:
+    User: alice
+Group second: &second
+  Prefix: second-
+  Common:
+    Port: "22"
+Group merged:
+  <<: [*first, *second]
+  Hosts:
+    example: {}
+`)
+
+	schema, err := MigrateLegacyYAML(input, "config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	document, err := schema.Document("config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	output, err := document.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Host first-example", "User alice"} {
+		if !strings.Contains(string(output), want) {
+			t.Fatalf("merged migration missing %q:\n%s", want, output)
+		}
+	}
+	if strings.Contains(string(output), "second-example") || strings.Contains(string(output), "Port 22") {
+		t.Fatalf("later merge operands overrode the first mapping:\n%s", output)
+	}
+}
+
 func TestSchemaDocumentPathSelection(t *testing.T) {
 	t.Parallel()
 

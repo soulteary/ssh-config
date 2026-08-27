@@ -132,6 +132,43 @@ func TestMalformedQuoteIsRetainedAndDiagnosed(t *testing.T) {
 	}
 }
 
+func TestDocumentAccessorsReturnIndependentData(t *testing.T) {
+	t.Parallel()
+
+	var nilDocument *Document
+	if nilDocument.Bytes() != nil || nilDocument.Nodes() != nil || nilDocument.Diagnostics() != nil || nilDocument.Raw(Span{}) != nil {
+		t.Fatal("nil document accessors should return nil")
+	}
+	if got := nilDocument.Newline(); got != "\n" {
+		t.Fatalf("nil document newline = %q, want LF", got)
+	}
+
+	document, err := Parse([]byte("Host \"unfinished\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	bytesCopy := document.Bytes()
+	bytesCopy[0] = 'X'
+	if got := string(document.Bytes()); got != "Host \"unfinished\n" {
+		t.Fatalf("Bytes() exposed document storage: %q", got)
+	}
+
+	diagnostics := document.Diagnostics()
+	if len(diagnostics) != 1 {
+		t.Fatalf("diagnostics = %#v, want one entry", diagnostics)
+	}
+	diagnostics[0].Message = "changed"
+	if document.Diagnostics()[0].Message == "changed" {
+		t.Fatal("Diagnostics() exposed document storage")
+	}
+
+	for _, span := range []Span{{Start: -1}, {Start: 2, End: 1}, {End: len(document.Bytes()) + 1}} {
+		if raw := document.Raw(span); raw != nil {
+			t.Fatalf("Raw(%+v) = %q, want nil", span, raw)
+		}
+	}
+}
+
 func TestParseArgumentsMatchesOpenSSHArgvSplit(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
