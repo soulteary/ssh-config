@@ -4,8 +4,8 @@
 
 | Metric | Value |
 | --- | --- |
-| Total | 226 |
-| Passed | 226 |
+| Total | 228 |
+| Passed | 228 |
 | Failed | 0 |
 | Skipped | 0 |
 | Coverage | 92.18% |
@@ -17,7 +17,7 @@
 | --- | --- | --- | --- | --- |
 | . | pass | 12 | 0 | 84.85% |
 | cmd | pass | 6 | 0 | 98.44% |
-| integration | pass | 3 | 0 | N/A |
+| integration | pass | 5 | 0 | N/A |
 | internal/define | no\_tests | 0 | 0 | N/A |
 | internal/fn | pass | 50 | 0 | 95.97% |
 | internal/parser | pass | 51 | 0 | 91.02% |
