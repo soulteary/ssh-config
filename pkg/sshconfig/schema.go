@@ -118,7 +118,11 @@ func (s SchemaDocument) Document() (*Document, error) {
 			return nil, fmt.Errorf("sshconfig: schema node %d: %w", index, err)
 		}
 		if node.Directive == nil {
-			if len(raw) == 0 && node.Type != "blank" {
+			if len(raw) == 0 {
+				if node.Type == "blank" {
+					output.WriteByte('\n')
+					continue
+				}
 				return nil, fmt.Errorf("sshconfig: schema node %d has neither raw bytes nor a directive", index)
 			}
 			output.Write(raw)
