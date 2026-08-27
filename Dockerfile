@@ -8,4 +8,4 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 ARG TARGETPLATFORM
 COPY ${TARGETPLATFORM}/ssh-config /usr/bin/ssh-config
 SHELL ["/bin/bash", "-c"]
-CMD ["/usr/bin/ssh-config"]
+ENTRYPOINT ["/usr/bin/ssh-config"]
