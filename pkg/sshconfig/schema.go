@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"io"
 	"slices"
@@ -225,13 +226,8 @@ func MarshalSchemaJSON(schema Schema) ([]byte, error) {
 // UnmarshalSchemaJSON strictly decodes one JSON schema document.
 func UnmarshalSchemaJSON(data []byte) (Schema, error) {
 	var schema Schema
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&schema); err != nil {
+	if err := jsonv2.Unmarshal(data, &schema, jsonv2.RejectUnknownMembers(true)); err != nil {
 		return Schema{}, fmt.Errorf("sshconfig: decode v3 JSON: %w", err)
-	}
-	if err := ensureJSONEOF(decoder); err != nil {
-		return Schema{}, err
 	}
 	if err := schema.Validate(); err != nil {
 		return Schema{}, err
