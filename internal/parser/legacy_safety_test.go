@@ -92,6 +92,23 @@ func TestGroupYAMLConfigPreservesPrefixedWildcardHost(t *testing.T) {
 	}
 }
 
+func TestGroupYAMLConfigRendersPrefixOnlyGlobalHost(t *testing.T) {
+	t.Parallel()
+
+	configs, err := Parser.GroupYAMLConfigStrict(`Group wildcard:
+  Prefix: "*"
+  Hosts:
+    "": {}
+`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(Parser.ConvertToSSH(configs))
+	if !strings.Contains(output, "Host *\n") {
+		t.Fatalf("ConvertToSSH() lost the prefix-only global host:\n%s", output)
+	}
+}
+
 func TestConvertToYAMLPreservesRepeatedRawNamesAcrossPrefixes(t *testing.T) {
 	t.Parallel()
 
