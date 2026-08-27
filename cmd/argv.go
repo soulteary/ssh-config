@@ -40,20 +40,24 @@ type Args struct {
 	Legacy   bool
 	Src      string
 	Dest     string
-	ShowHelp bool
-	Version  bool
+	// DocumentPath selects a physical document by its schema path when
+	// converting a multi-document v3 envelope back to SSH.
+	DocumentPath string
+	ShowHelp     bool
+	Version      bool
 }
 
 const (
-	DEFAULT_TO_YAML  = false
-	DEFAULT_TO_SSH   = false
-	DEFAULT_TO_JSON  = false
-	DEFAULT_LOSSLESS = false
-	DEFAULT_LEGACY   = false
-	DEFAULT_SRC      = ""
-	DEFAULT_DEST     = ""
-	DEFAULT_HELP     = false
-	DEFAULT_VERSION  = false
+	DEFAULT_TO_YAML       = false
+	DEFAULT_TO_SSH        = false
+	DEFAULT_TO_JSON       = false
+	DEFAULT_LOSSLESS      = false
+	DEFAULT_LEGACY        = false
+	DEFAULT_SRC           = ""
+	DEFAULT_DEST          = ""
+	DEFAULT_DOCUMENT_PATH = ""
+	DEFAULT_HELP          = false
+	DEFAULT_VERSION       = false
 )
 
 func initFlags() {
@@ -64,6 +68,7 @@ func initFlags() {
 	flag.BoolVar(&args.Legacy, "legacy", DEFAULT_LEGACY, "Use the legacy lossy conversion format")
 	flag.StringVar(&args.Src, "src", DEFAULT_SRC, "Source file or directories path, valid when using non-pipeline mode")
 	flag.StringVar(&args.Dest, "dest", DEFAULT_DEST, "Destination file path, valid when using non-pipeline mode")
+	flag.StringVar(&args.DocumentPath, "document-path", DEFAULT_DOCUMENT_PATH, "Select a document path from a multi-document v3 schema when converting to SSH")
 	flag.BoolVar(&args.ShowHelp, "help", DEFAULT_HELP, "Show help")
 	flag.BoolVar(&args.Version, "version", DEFAULT_VERSION, "Show version")
 }
@@ -79,15 +84,16 @@ func ParseArgs() Args {
 func ResetFlags() {
 	flag.CommandLine = flag.NewFlagSet(flag.CommandLine.Name(), flag.ExitOnError)
 	args = Args{
-		ToYAML:   DEFAULT_TO_YAML,
-		ToSSH:    DEFAULT_TO_SSH,
-		ToJSON:   DEFAULT_TO_JSON,
-		Lossless: DEFAULT_LOSSLESS,
-		Legacy:   DEFAULT_LEGACY,
-		Src:      DEFAULT_SRC,
-		Dest:     DEFAULT_DEST,
-		ShowHelp: DEFAULT_HELP,
-		Version:  DEFAULT_VERSION,
+		ToYAML:       DEFAULT_TO_YAML,
+		ToSSH:        DEFAULT_TO_SSH,
+		ToJSON:       DEFAULT_TO_JSON,
+		Lossless:     DEFAULT_LOSSLESS,
+		Legacy:       DEFAULT_LEGACY,
+		Src:          DEFAULT_SRC,
+		Dest:         DEFAULT_DEST,
+		DocumentPath: DEFAULT_DOCUMENT_PATH,
+		ShowHelp:     DEFAULT_HELP,
+		Version:      DEFAULT_VERSION,
 	} // Reset the args
 	once = sync.Once{} // Reset the once
 }
@@ -118,6 +124,12 @@ func CheckConvertArgvValid(args Args) (result bool, desc string) {
 
 	if trueCount != 1 {
 		return false, "Please specify either -to-yaml or -to-ssh or -to-json"
+	}
+	if args.DocumentPath != "" && !args.ToSSH {
+		return false, "-document-path is only valid with -to-ssh"
+	}
+	if args.DocumentPath != "" && args.Legacy {
+		return false, "-document-path is not supported with -legacy"
 	}
 
 	return true, ""

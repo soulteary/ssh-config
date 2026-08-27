@@ -93,6 +93,16 @@ Use `-to-json` instead of `-to-yaml` for a JSON envelope. Destination files are
 replaced atomically; existing regular-file permissions are preserved, and
 symbolic-link destinations are rejected.
 
+A schema may contain several physical documents. Select one by its `path` when
+converting back to SSH:
+
+```bash
+ssh-config -to-ssh -src bundle.v3.yaml -document-path ~/.ssh/config -dest config
+```
+
+Without `-document-path`, `-to-ssh` accepts only a schema containing exactly
+one document. The flag is not valid for structured output or with `-legacy`.
+
 ## Go API
 
 ```go

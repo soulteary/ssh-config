@@ -114,6 +114,42 @@ func TestProcessLosslessRejectsInvalidStructuredInput(t *testing.T) {
 	}
 }
 
+func TestProcessLosslessSelectsSchemaDocumentByPath(t *testing.T) {
+	t.Parallel()
+	input := `schemaVersion: 3
+documents:
+  - path: /home/alice/.ssh/config
+    nodes:
+      - type: directive
+        directive:
+          keyword: Host
+          arguments: [alice]
+  - path: /home/bob/.ssh/config
+    nodes:
+      - type: directive
+        directive:
+          keyword: Host
+          arguments: [bob]
+`
+
+	got, err := Parser.ProcessLossless("YAML", input, Cmd.Args{
+		ToSSH:        true,
+		DocumentPath: "/home/bob/.ssh/config",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "Host bob\n"; string(got) != want {
+		t.Fatalf("selected document = %q, want %q", got, want)
+	}
+	if _, err := Parser.ProcessLossless("YAML", input, Cmd.Args{ToSSH: true}); err == nil {
+		t.Fatal("multi-document schema was accepted without -document-path")
+	}
+	if _, err := Parser.ProcessLossless("YAML", input, Cmd.Args{ToSSH: true, DocumentPath: "missing"}); err == nil {
+		t.Fatal("unknown document path was accepted")
+	}
+}
+
 func TestProcessLosslessDetectsReorderedV3YAML(t *testing.T) {
 	t.Parallel()
 	input := `documents:
