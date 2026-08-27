@@ -30,6 +30,11 @@ v3 and can be removed after every installation has upgraded. Legacy YAML and
 JSON remain valid inputs in the default mode and are migrated to v3; `-legacy`
 controls the output pipeline, not input compatibility.
 
+The linked October 2024 project guide predates v3. Its directory-scan and
+map-based YAML/JSON examples describe the legacy pipeline; add `-legacy` when
+following those examples with a v3 binary. Prefer the commands above for new
+automation.
+
 ## Go module path
 
 The public module path changes with the application major version:
