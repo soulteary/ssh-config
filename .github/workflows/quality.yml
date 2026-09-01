@@ -10,6 +10,7 @@ on:
       - ".github/coverage.svg"
       - ".github/go-test-report.json"
       - ".github/goreportcard.svg"
+      - ".github/goreportcard-report.md"
   push:
     branches: [main]
     paths-ignore:
@@ -62,7 +63,7 @@ jobs:
         with:
           version: source
           threshold: "90"
-          report: "false"
+          report: "true"
           commit: "false"
 
   main:
@@ -115,5 +116,5 @@ jobs:
         with:
           version: source
           threshold: "90"
-          report: "false"
+          report: "true"
           commit: "true"
