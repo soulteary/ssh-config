@@ -4,22 +4,22 @@
 
 | Metric | Value |
 | --- | --- |
-| Total | 230 |
-| Passed | 230 |
+| Total | 240 |
+| Passed | 240 |
 | Failed | 0 |
 | Skipped | 0 |
-| Coverage | 92.20% |
+| Coverage | 92.33% |
 | Threshold | 85.00% |
 
 ### Packages
 
 | Package | Status | Tests | Failed | Coverage |
 | --- | --- | --- | --- | --- |
-| . | pass | 12 | 0 | 84.85% |
+| . | pass | 14 | 0 | 85.44% |
 | cmd | pass | 6 | 0 | 98.44% |
 | integration | pass | 5 | 0 | N/A |
 | internal/define | no\_tests | 0 | 0 | N/A |
 | internal/fn | pass | 50 | 0 | 95.97% |
-| internal/parser | pass | 53 | 0 | 91.10% |
-| pkg/lexer | pass | 29 | 0 | 99.16% |
-| pkg/sshconfig | pass | 75 | 0 | 91.38% |
+| internal/parser | pass | 57 | 0 | 91.34% |
+| pkg/lexer | pass | 32 | 0 | 99.16% |
+| pkg/sshconfig | pass | 76 | 0 | 91.50% |

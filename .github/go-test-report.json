@@ -1,24 +1,24 @@
 {
   "schema_version": "1.0",
   "tests": {
-    "total": 230,
-    "passed": 230,
+    "total": 240,
+    "passed": 240,
     "failed": 0,
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 2140,
-    "total_statements": 2321,
-    "percentage": 92.2,
+    "covered_statements": 2167,
+    "total_statements": 2347,
+    "percentage": 92.33,
     "threshold": 85
   },
   "packages": [
     {
       "name": ".",
       "status": "pass",
-      "tests": 12,
+      "tests": 14,
       "failed": 0,
-      "coverage": 84.85
+      "coverage": 85.44
     },
     {
       "name": "cmd",
@@ -51,23 +51,23 @@
     {
       "name": "internal/parser",
       "status": "pass",
-      "tests": 53,
+      "tests": 57,
       "failed": 0,
-      "coverage": 91.1
+      "coverage": 91.34
     },
     {
       "name": "pkg/lexer",
       "status": "pass",
-      "tests": 29,
+      "tests": 32,
       "failed": 0,
       "coverage": 99.16
     },
     {
       "name": "pkg/sshconfig",
       "status": "pass",
-      "tests": 75,
+      "tests": 76,
       "failed": 0,
-      "coverage": 91.38
+      "coverage": 91.5
     }
   ],
   "failures": null
