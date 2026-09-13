@@ -22,7 +22,7 @@ func ValidateLegacyYAML(data []byte) error {
 		return nil
 	}
 	root := document.Content[0]
-	if err := validateLegacyYAMLDuplicates(root, "document", make(map[*yaml.Node]bool)); err != nil {
+	if err := validateLegacyYAMLDuplicates(root, "document", make(map[*yaml.Node]bool), make(map[*yaml.Node]struct{})); err != nil {
 		return err
 	}
 	return validateLegacyYAMLRoot(root)
@@ -139,9 +139,16 @@ func legacyYAMLMappingEntries(node *yaml.Node, path string) ([]legacyYAMLNodeEnt
 	return entries, nil
 }
 
-func validateLegacyYAMLDuplicates(node *yaml.Node, path string, visiting map[*yaml.Node]bool) error {
+func validateLegacyYAMLDuplicates(node *yaml.Node, path string, visiting map[*yaml.Node]bool, validated map[*yaml.Node]struct{}) error {
 	node = dereferenceLegacyYAMLAlias(node)
 	if node == nil || visiting[node] {
+		return nil
+	}
+	// An anchored node reached through several aliases has the same shape every
+	// time, and this walk only inspects shape, so checking it once is enough.
+	// Without the memo, visiting clears itself on the way out and a document
+	// whose aliases nest N levels deep is walked exponentially often.
+	if _, done := validated[node]; done {
 		return nil
 	}
 	visiting[node] = true
@@ -161,17 +168,18 @@ func validateLegacyYAMLDuplicates(node *yaml.Node, path string, visiting map[*ya
 			if isLegacyYAMLMergeKey(key) {
 				childPath = path + ".<<"
 			}
-			if err := validateLegacyYAMLDuplicates(value, childPath, visiting); err != nil {
+			if err := validateLegacyYAMLDuplicates(value, childPath, visiting, validated); err != nil {
 				return err
 			}
 		}
 	case yaml.SequenceNode:
 		for index, child := range node.Content {
-			if err := validateLegacyYAMLDuplicates(child, fmt.Sprintf("%s[%d]", path, index), visiting); err != nil {
+			if err := validateLegacyYAMLDuplicates(child, fmt.Sprintf("%s[%d]", path, index), visiting, validated); err != nil {
 				return err
 			}
 		}
 	}
+	validated[node] = struct{}{}
 	return nil
 }
 
