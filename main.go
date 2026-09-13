@@ -89,6 +89,15 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		} else {
 			userInput = deps.GetUserInputFromStdin()
 		}
+		// An empty pipe is almost always a failed upstream command rather than
+		// a request to write an empty configuration. Refusing here keeps a
+		// broken pipeline from truncating -dest, which is frequently
+		// ~/.ssh/config, through an otherwise successful atomic replacement.
+		if strings.TrimSpace(userInput) == "" {
+			err := fmt.Errorf("standard input is empty; refusing to write an empty configuration")
+			deps.errorln("Error:", err)
+			return err
+		}
 	} else {
 		isValid, notValidReason := Cmd.CheckIOArgvValid(args)
 		if !isValid {
