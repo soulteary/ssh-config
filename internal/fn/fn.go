@@ -184,8 +184,19 @@ func looksLikeLegacyYAML(input string) bool {
 	return false
 }
 
+// GetPathContent reads an explicitly named source path.
 func GetPathContent(src string) ([]byte, error) {
-	configFiles, err := ReadSSHConfigs(src)
+	return getPathContent(src, ReadSSHConfigs)
+}
+
+// GetDefaultPathContent reads the implicit ~/.ssh that -legacy falls back to,
+// where only the conventional configuration paths are scanned.
+func GetDefaultPathContent(src string) ([]byte, error) {
+	return getPathContent(src, ReadDefaultSSHConfigs)
+}
+
+func getPathContent(src string, scan func(string) (*SSHConfig, error)) ([]byte, error) {
+	configFiles, err := scan(src)
 	if err != nil {
 		return nil, err
 	}

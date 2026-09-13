@@ -674,37 +674,62 @@ func TestPrintConfigs(t *testing.T) {
 	}
 }
 
-func TestReadSSHConfigsSkipsFilesWithoutAHostBlock(t *testing.T) {
+func TestReadDefaultSSHConfigsSkipsFilesOutsideConfigPaths(t *testing.T) {
 	directory := t.TempDir()
 	writeScanFixture(t, filepath.Join(directory, "config"), "Host prod\n  HostName 10.0.0.1\n")
-	// A file that merely mentions a known keyword is not configuration the
-	// legacy schema can represent, and must not be read in.
-	writeScanFixture(t, filepath.Join(directory, "notes.txt"),
-		"# reminder: rotate the deploy credential\nCompression yes\n")
+	// An unrelated file kept next to the configuration is not configuration,
+	// however much of it happens to parse. Reading it in reproduced its
+	// comments in the output as Notes.
+	writeScanFixture(t, filepath.Join(directory, "backup-notes"),
+		"# reminder: rotate the deploy credential\nHost notes-placeholder\n")
 
-	configs, err := fn.ReadSSHConfigs(directory)
+	configs, err := fn.ReadDefaultSSHConfigs(directory)
 	if err != nil {
-		t.Fatalf("ReadSSHConfigs() error = %v", err)
+		t.Fatalf("ReadDefaultSSHConfigs() error = %v", err)
 	}
-	if _, picked := configs.Configs[filepath.Join(directory, "notes.txt")]; picked {
-		t.Fatal("a file without a Host or Match block was treated as configuration")
+	if _, picked := configs.Configs[filepath.Join(directory, "backup-notes")]; picked {
+		t.Fatal("a file outside the conventional configuration paths was read in")
 	}
 	if _, picked := configs.Configs[filepath.Join(directory, "config")]; !picked {
 		t.Fatal("the real configuration file was not picked up")
 	}
 }
 
-func TestReadSSHConfigsAcceptsMatchOnlyFragment(t *testing.T) {
+// An explicitly named directory is the caller's deliberate choice, so every file
+// in it is still considered, whatever it is named.
+func TestReadSSHConfigsStillAcceptsAnyNameInAnExplicitPath(t *testing.T) {
 	directory := t.TempDir()
-	writeScanFixture(t, filepath.Join(directory, "config"),
-		"Match host bastion\n  User admin\n")
+	writeScanFixture(t, filepath.Join(directory, "custom_config"), "Host custom\n  HostName 10.0.0.2\n")
 
 	configs, err := fn.ReadSSHConfigs(directory)
 	if err != nil {
 		t.Fatalf("ReadSSHConfigs() error = %v", err)
 	}
-	if _, picked := configs.Configs[filepath.Join(directory, "config")]; !picked {
-		t.Fatal("a Match block was not recognized as configuration")
+	if _, picked := configs.Configs[filepath.Join(directory, "custom_config")]; !picked {
+		t.Fatal("an explicitly scanned directory stopped accepting arbitrary file names")
+	}
+}
+
+// A host stanza split across sorted files under config.d is concatenated into
+// one document, so a file holding only continuation directives has to be kept
+// even under the narrower default scan.
+func TestReadDefaultSSHConfigsKeepsSplitStanzaUnderConfigD(t *testing.T) {
+	directory := t.TempDir()
+	includeDir := filepath.Join(directory, "config.d")
+	if err := os.MkdirAll(includeDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeScanFixture(t, filepath.Join(includeDir, "01-host"), "Host prod\n  HostName 10.0.0.1\n")
+	writeScanFixture(t, filepath.Join(includeDir, "02-options"), "  User deploy\n  Port 2222\n")
+
+	configs, err := fn.ReadDefaultSSHConfigs(directory)
+	if err != nil {
+		t.Fatalf("ReadDefaultSSHConfigs() error = %v", err)
+	}
+	for _, name := range []string{"01-host", "02-options"} {
+		if _, picked := configs.Configs[filepath.Join(includeDir, name)]; !picked {
+			t.Fatalf("config.d/%s was dropped; a split host stanza loses directives", name)
+		}
 	}
 }
 

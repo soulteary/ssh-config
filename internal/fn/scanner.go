@@ -81,16 +81,36 @@ func IsConfigFile(path string) bool {
 	return hasConfigDirective(path, func(string) bool { return true })
 }
 
+// isLegacyConfigPath reports whether a path inside the scanned directory is one
+// of the conventional OpenSSH client configuration locations.
+//
+// The scan used to accept any file holding one line that parsed as a known
+// keyword, so an unrelated file kept under ~/.ssh was read in full and its
+// comments were reproduced in the output as Notes. Deciding by path instead of
+// by content removes that without making any judgement about what a file holds:
+// a host stanza split across several files under config.d still resolves,
+// because every one of those files is a configuration path whatever it
+// contains.
+func isLegacyConfigPath(root, path string) bool {
+	relative, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	relative = filepath.ToSlash(relative)
+	return relative == "config" || strings.HasPrefix(relative, "config.d/")
+}
+
 // isLegacyDirectoryConfigFile reports whether a file found by the -legacy
-// directory scan should be treated as configuration. It requires a Host or
-// Match block rather than any known keyword: the legacy schema is host-keyed
-// and already refuses directives that appear before the first Host, so a
-// fragment with no block cannot be converted anyway. Accepting any of the 128
-// keywords meant an unrelated file kept under ~/.ssh was read in full and its
-// comments were reproduced in the output as Notes.
-func isLegacyDirectoryConfigFile(path string) bool {
+// directory scan should be treated as configuration. When the scan is the
+// implicit one over the user's ~/.ssh, files outside the conventional paths are
+// skipped. For every file that is considered, the content test is the same as it
+// has always been.
+func isLegacyDirectoryConfigFile(root, path string, configPathsOnly bool) bool {
+	if configPathsOnly && !isLegacyConfigPath(root, path) {
+		return false
+	}
 	return hasConfigDirective(path, func(keyword string) bool {
-		return keyword == "host" || keyword == "match"
+		return keyword != "include"
 	})
 }
 
@@ -127,7 +147,20 @@ func hasConfigDirective(path string, accept func(string) bool) bool {
 	return false
 }
 
+// ReadSSHConfigs scans an explicitly named path. Every file is considered, as
+// it always has been, because the caller chose the directory.
 func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
+	return readSSHConfigs(sshPath, false)
+}
+
+// ReadDefaultSSHConfigs scans the implicit ~/.ssh that -legacy falls back to
+// when no source is given. There the directory's contents are not a deliberate
+// choice, so only the conventional configuration paths are read.
+func ReadDefaultSSHConfigs(sshPath string) (*SSHConfig, error) {
+	return readSSHConfigs(sshPath, true)
+}
+
+func readSSHConfigs(sshPath string, configPathsOnly bool) (*SSHConfig, error) {
 	config := &SSHConfig{
 		Configs: make(map[string]*ConfigFile),
 	}
@@ -178,7 +211,7 @@ func ReadSSHConfigs(sshPath string) (*SSHConfig, error) {
 			return nil
 		}
 
-		if !isLegacyDirectoryConfigFile(path) {
+		if !isLegacyDirectoryConfigFile(sshPath, path, configPathsOnly) {
 			return nil
 		}
 
