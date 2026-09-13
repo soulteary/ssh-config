@@ -20,8 +20,10 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
+	Cmd "github.com/soulteary/ssh-config/v3/cmd"
 	Define "github.com/soulteary/ssh-config/v3/internal/define"
 	Fn "github.com/soulteary/ssh-config/v3/internal/fn"
 	Parser "github.com/soulteary/ssh-config/v3/internal/parser"
@@ -592,5 +594,85 @@ func TestYAMLConfigWithGroupCommon(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestConvertToYAMLGlobalUsesFirstObtainedValue(t *testing.T) {
+	// ssh_config(5) keeps the first value obtained for a keyword, so the YAML
+	// view of two "Host *" blocks has to agree with what ssh would apply.
+	input := []Define.HostConfig{
+		{Name: "*", Config: map[string]string{"Port": "22"}},
+		{Name: "*", Config: map[string]string{"Port": "2222", "User": "ops"}},
+	}
+
+	got := string(Parser.ConvertToYAML(input))
+	if !strings.Contains(got, `Port: "22"`) {
+		t.Fatalf("ConvertToYAML() = %q, want the first Port value 22", got)
+	}
+	if strings.Contains(got, `Port: "2222"`) {
+		t.Fatalf("ConvertToYAML() = %q, want the later Port value to be ignored", got)
+	}
+	// A keyword that only the later block sets is still inherited.
+	if !strings.Contains(got, "User: ops") {
+		t.Fatalf("ConvertToYAML() = %q, want User from the second block", got)
+	}
+
+	ssh := string(Parser.ConvertToSSH(input))
+	if !strings.Contains(ssh, "Port 22") {
+		t.Fatalf("ConvertToSSH() = %q, want the first Host * block preserved", ssh)
+	}
+}
+
+// Codex review on #128 raised repeated IdentityFile values. The legacy YAML view
+// has a single "global" mapping, so two conflicting "*" entries cannot be
+// represented there at all; picking either one silently drops an identity that
+// OpenSSH would have tried. Refuse instead, and keep the lossless outputs.
+func TestProcessRefusesUnrepresentableGlobalsForYAML(t *testing.T) {
+	source := `[{"Name":"*","Data":{"IdentityFile":"~/.ssh/a"}},{"Name":"*","Data":{"IdentityFile":"~/.ssh/b"}}]`
+
+	if _, err := Parser.Process("JSON", source, Cmd.Args{Legacy: true, ToYAML: true}); err == nil {
+		t.Fatal("Process(-to-yaml) error = nil, want a refusal for conflicting global directives")
+	}
+
+	ssh, err := Parser.Process("JSON", source, Cmd.Args{Legacy: true, ToSSH: true})
+	if err != nil {
+		t.Fatalf("Process(-to-ssh) error = %v, want the lossless output to stay available", err)
+	}
+	for _, want := range []string{"~/.ssh/a", "~/.ssh/b"} {
+		if !strings.Contains(string(ssh), want) {
+			t.Fatalf("ConvertToSSH output = %q, want %s preserved", ssh, want)
+		}
+	}
+
+	encoded, err := Parser.Process("JSON", source, Cmd.Args{Legacy: true, ToJSON: true})
+	if err != nil {
+		t.Fatalf("Process(-to-json) error = %v, want the flat list to stay available", err)
+	}
+	for _, want := range []string{"~/.ssh/a", "~/.ssh/b"} {
+		if !strings.Contains(string(encoded), want) {
+			t.Fatalf("ConvertToJSON output = %q, want %s preserved", encoded, want)
+		}
+	}
+}
+
+func TestProcessAllowsDisjointGlobalsForYAML(t *testing.T) {
+	source := `[{"Name":"*","Data":{"Port":"22"}},{"Name":"*","Data":{"User":"ops"}}]`
+
+	got, err := Parser.Process("JSON", source, Cmd.Args{Legacy: true, ToYAML: true})
+	if err != nil {
+		t.Fatalf("Process() error = %v, want disjoint global keywords to merge", err)
+	}
+	for _, want := range []string{`Port: "22"`, "User: ops"} {
+		if !strings.Contains(string(got), want) {
+			t.Fatalf("ConvertToYAML output = %q, want %s", got, want)
+		}
+	}
+}
+
+func TestProcessAllowsIdenticalRepeatedGlobalsForYAML(t *testing.T) {
+	source := `[{"Name":"*","Data":{"Port":"22"}},{"Name":"*","Data":{"Port":"22"}}]`
+
+	if _, err := Parser.Process("JSON", source, Cmd.Args{Legacy: true, ToYAML: true}); err != nil {
+		t.Fatalf("Process() error = %v, want an identical repeated value to be accepted", err)
 	}
 }

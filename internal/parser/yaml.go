@@ -73,6 +73,13 @@ func ConvertToYAML(hostConfigs []Define.HostConfig) []byte {
 		global := make(map[string]string)
 		for _, config := range globalConfigs {
 			for key, value := range config.Config {
+				// ssh_config(5): the first obtained value for each keyword is
+				// used, so a later "Host *" block cannot override an earlier
+				// one. Merging with last-wins made this view contradict both
+				// ConvertToSSH and the configuration ssh actually applies.
+				if _, seen := global[key]; seen {
+					continue
+				}
 				global[key] = value
 			}
 		}
