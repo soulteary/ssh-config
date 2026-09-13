@@ -37,11 +37,15 @@ var (
 )
 
 type Dependencies struct {
-	StdinStat             func() (os.FileInfo, error)
-	Exit                  func(int)
-	Println               func(...interface{}) (n int, err error)
-	PrintErr              func(...interface{}) (n int, err error)
-	GetContent            func(string) ([]byte, error)
+	StdinStat  func() (os.FileInfo, error)
+	Exit       func(int)
+	Println    func(...interface{}) (n int, err error)
+	PrintErr   func(...interface{}) (n int, err error)
+	GetContent func(string) ([]byte, error)
+	// GetDefaultContent reads the implicit ~/.ssh that -legacy falls back to
+	// when no -src is given. That directory's contents are not a deliberate
+	// choice by the caller, so it is scanned more narrowly than a named path.
+	GetDefaultContent     func(string) ([]byte, error)
 	GetLosslessContent    func(string) ([]byte, error)
 	SaveFile              func(string, []byte) error
 	SaveLossless          func(string, []byte) error
@@ -64,6 +68,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 	// This keeps automation deterministic when a caller supplies -src while its
 	// parent process also connects a non-terminal stdin.
 	pipeMode := args.Src == "" && deps.CheckUseStdin()
+	sourceIsDefault := false
 	if !pipeMode && args.Src == "" {
 		if deps.UserHomeDir == nil {
 			err := fmt.Errorf("user home directory lookup is unavailable")
@@ -76,6 +81,7 @@ func Run(args Cmd.Args, deps Dependencies) error {
 			return err
 		}
 		args.Src = defaultSource(homeDir, args.Legacy)
+		sourceIsDefault = true
 	}
 	var userInput string
 	if pipeMode {
@@ -106,8 +112,11 @@ func Run(args Cmd.Args, deps Dependencies) error {
 		}
 
 		getContent := deps.GetContent
-		if !args.Legacy && deps.GetLosslessContent != nil {
+		switch {
+		case !args.Legacy && deps.GetLosslessContent != nil:
 			getContent = deps.GetLosslessContent
+		case args.Legacy && sourceIsDefault && deps.GetDefaultContent != nil:
+			getContent = deps.GetDefaultContent
 		}
 		content, err := getContent(args.Src)
 		if err != nil {
@@ -185,6 +194,7 @@ func MainWithDependencies(exit func(int), userHomeDir func() (string, error)) {
 			return fmt.Fprintln(os.Stderr, values...)
 		},
 		GetContent:            Fn.GetPathContent,
+		GetDefaultContent:     Fn.GetDefaultPathContent,
 		GetLosslessContent:    Fn.ReadConfigFile,
 		SaveFile:              atomicSave,
 		SaveLossless:          atomicSave,

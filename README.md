@@ -101,7 +101,7 @@ cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 ### Options
 
 - `-to-yaml, -to-json, -to-ssh`: Specify output format (yaml/json/config), only one output format can be specified at a time.
-- `-src`: Specify the source file. An explicit path takes precedence over piped standard input. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`. Piped standard input that contains no non-whitespace bytes is rejected, so a failed upstream command cannot replace `-dest` with an empty file.
+- `-src`: Specify the source file. An explicit path takes precedence over piped standard input. When omitted, lossless mode reads `~/.ssh/config`; legacy mode scans `~/.ssh`, reading only `config` and `config.d/*` there so unrelated files kept alongside the configuration are not pulled in. A directory named explicitly with `-src` is scanned in full, whatever its files are called. Piped standard input that contains no non-whitespace bytes is rejected, so a failed upstream command cannot replace `-dest` with an empty file.
 - `-dest`: Specify the path to save the configuration file, including when input comes from standard input. Its parent directory must already exist. When omitted, the converted result is written to standard output.
 - `-document-path`: Select a document by its `path` when `-to-ssh` reads a multi-document v3 schema.
 - `-legacy`: Use the previous lossy map/array formats. This mode also enables directory scanning.
