@@ -3,8 +3,10 @@ package sshconfig
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSchemaJSONAndYAMLRoundTrip(t *testing.T) {
@@ -883,6 +885,44 @@ func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("schema round trip mismatch\n got: %q\nwant: %q", got, want)
+	}
+}
+
+// A legacy document may reference the same anchor from many places. Validation
+// only inspects node shape, so each anchored node needs to be walked once; a
+// walker that re-expands every alias path visits 9^15 nodes for the ~600 bytes
+// built here and never returns.
+func TestValidateLegacyYAMLTerminatesOnNestedAliases(t *testing.T) {
+	t.Parallel()
+
+	var builder strings.Builder
+	builder.WriteString("a: &a1 [x, x, x, x, x, x, x, x, x]\n")
+	const depth = 16
+	for level := 2; level <= depth; level++ {
+		fmt.Fprintf(&builder, "b%d: &a%d [", level, level)
+		for index := 0; index < 9; index++ {
+			if index > 0 {
+				builder.WriteString(", ")
+			}
+			fmt.Fprintf(&builder, "*a%d", level-1)
+		}
+		builder.WriteString("]\n")
+	}
+	fmt.Fprintf(&builder, "global: *a%d\n", depth)
+
+	data := []byte(builder.String())
+	if len(data) > 2048 {
+		t.Fatalf("fixture grew to %d bytes; it is meant to stay small", len(data))
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- ValidateLegacyYAML(data) }()
+
+	select {
+	case <-done:
+		// Either verdict is acceptable. The assertion is that it terminates.
+	case <-time.After(30 * time.Second):
+		t.Fatalf("ValidateLegacyYAML did not finish for %d bytes of nested aliases", len(data))
 	}
 }
 

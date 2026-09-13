@@ -53,6 +53,9 @@ func Process(fileType string, userInput string, args Cmd.Args) ([]byte, error) {
 	}
 
 	if args.ToYAML {
+		if err := validateLegacyGlobalsRepresentable(hostConfigs); err != nil {
+			return nil, err
+		}
 		return Fn.TidyLastEmptyLines(ConvertToYAML(hostConfigs)), nil
 	}
 

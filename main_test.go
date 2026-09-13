@@ -600,3 +600,63 @@ func TestMain(t *testing.T) {
 
 	os.Remove("test.yaml")
 }
+
+func TestRunRejectsEmptyPipedInput(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{name: "no bytes", input: ""},
+		{name: "whitespace only", input: " \t\n\r\n"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			saved := false
+			err := Run(Cmd.Args{ToSSH: true, Dest: "destination.cfg"}, Dependencies{
+				Println:       func(...interface{}) (int, error) { return 0, nil },
+				PrintErr:      func(...interface{}) (int, error) { return 0, nil },
+				CheckUseStdin: func() bool { return true },
+				ReadStdin:     func() ([]byte, error) { return []byte(test.input), nil },
+				Process: func(string, string, Cmd.Args) ([]byte, error) {
+					t.Fatal("converter ran on empty piped input")
+					return nil, nil
+				},
+				SaveLossless: func(string, []byte) error {
+					saved = true
+					return nil
+				},
+				WriteOutput: func([]byte) error {
+					t.Fatal("empty piped input reached standard output")
+					return nil
+				},
+			})
+			if err == nil {
+				t.Fatal("Run() error = nil, want an error for empty standard input")
+			}
+			if saved {
+				t.Fatal("Run() replaced the destination file from empty standard input")
+			}
+		})
+	}
+}
+
+func TestRunRejectsEmptyLineOrientedPipedInput(t *testing.T) {
+	err := Run(Cmd.Args{ToYAML: true}, Dependencies{
+		Println:               func(...interface{}) (int, error) { return 0, nil },
+		PrintErr:              func(...interface{}) (int, error) { return 0, nil },
+		CheckUseStdin:         func() bool { return true },
+		GetUserInputFromStdin: func() string { return "" },
+		Process: func(string, string, Cmd.Args) ([]byte, error) {
+			t.Fatal("converter ran on empty piped input")
+			return nil, nil
+		},
+		WriteOutput: func([]byte) error {
+			t.Fatal("empty piped input reached standard output")
+			return nil
+		},
+	})
+	if err == nil {
+		t.Fatal("Run() error = nil, want an error for empty standard input")
+	}
+}

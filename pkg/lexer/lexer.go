@@ -105,9 +105,15 @@ func NewLexer(input string) *Lexer {
 	}
 }
 
+// eof is returned by peek and next once the input is exhausted. It is a
+// sentinel rather than 0 because NUL is a legal input byte: conflating the two
+// made the scanner treat the first NUL as end of input and silently drop
+// everything after it.
+const eof = rune(-1)
+
 func (l *Lexer) peek() rune {
 	if l.pos >= len(l.input) {
-		return 0
+		return eof
 	}
 	r, _ := utf8.DecodeRuneInString(l.input[l.pos:])
 	return r
@@ -115,7 +121,7 @@ func (l *Lexer) peek() rune {
 
 func (l *Lexer) next() rune {
 	if l.pos >= len(l.input) {
-		return 0
+		return eof
 	}
 	r, w := utf8.DecodeRuneInString(l.input[l.pos:])
 	l.pos += w
@@ -141,7 +147,7 @@ func (l *Lexer) NextToken() (Token, error) {
 		l.start = l.pos
 		l.startLine, l.startCol = l.line, l.col
 		r := l.peek()
-		if r == 0 {
+		if r == eof {
 			return l.emit(TokenEOF, ""), nil
 		}
 
@@ -160,7 +166,7 @@ func (l *Lexer) NextToken() (Token, error) {
 
 		case r == '#':
 			l.next()
-			for l.peek() != 0 && l.peek() != '\n' {
+			for l.peek() != eof && l.peek() != '\n' {
 				l.next()
 			}
 			comment := strings.TrimSpace(l.slice()[1:])
@@ -180,7 +186,7 @@ func (l *Lexer) NextToken() (Token, error) {
 			return l.scanArgument()
 
 		default:
-			for l.peek() != 0 && l.peek() != '\n' && l.peek() != ' ' && l.peek() != '\t' && l.peek() != '\r' && l.peek() != '=' {
+			for l.peek() != eof && l.peek() != '\n' && l.peek() != ' ' && l.peek() != '\t' && l.peek() != '\r' && l.peek() != '=' {
 				l.next()
 			}
 			word := l.slice()
@@ -209,7 +215,7 @@ func (l *Lexer) scanArgument() (Token, error) {
 	l.allowEquals = false
 	for {
 		r := l.peek()
-		if r == 0 || quote == 0 && (r == '\n' || r == ' ' || r == '\t' || r == '\r') {
+		if r == eof || quote == 0 && (r == '\n' || r == ' ' || r == '\t' || r == '\r') {
 			break
 		}
 		if r == '\\' {
