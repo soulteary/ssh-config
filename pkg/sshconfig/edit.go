@@ -180,7 +180,11 @@ func writeArguments(out *bytes.Buffer, arguments []string) {
 
 // QuoteArgument renders one argument so reparsing returns the same value.
 func QuoteArgument(argument string) string {
-	if argument != "" && !strings.ContainsAny(argument, " \t\r\n#\\\"'") {
+	// A leading '=' has to be quoted even though '=' is otherwise an ordinary
+	// argument byte: the parser consumes one '=' right after the keyword as the
+	// separator, so an unquoted "=value" as the first argument comes back as
+	// "value". Quoting it in any position keeps this local to the renderer.
+	if argument != "" && !strings.ContainsAny(argument, " \t\r\n#\\\"'") && argument[0] != '=' {
 		return argument
 	}
 	var out strings.Builder

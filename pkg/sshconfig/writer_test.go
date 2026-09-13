@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 )
@@ -295,4 +296,54 @@ func TestSaveAtomicReportsDirectorySyncFailure(t *testing.T) {
 	if readErr != nil || string(got) != "new" {
 		t.Fatalf("renamed destination = %q, %v", got, readErr)
 	}
+}
+
+func TestQuoteArgumentQuotesLeadingEquals(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		argument string
+		want     string
+	}{
+		{argument: "=value", want: `"=value"`},
+		{argument: "=", want: `"="`},
+		// '=' elsewhere in an argument is an ordinary byte and stays bare.
+		{argument: "FOO=bar", want: "FOO=bar"},
+	}
+	for _, test := range tests {
+		if got := QuoteArgument(test.argument); got != test.want {
+			t.Errorf("QuoteArgument(%q) = %q, want %q", test.argument, got, test.want)
+		}
+	}
+}
+
+func TestAppendDirectiveRoundTripsLeadingEqualsArgument(t *testing.T) {
+	t.Parallel()
+	doc, _ := Parse([]byte("Host a\n"))
+	if _, err := doc.AppendDirective("SetEnv", "=value"); err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := doc.MarshalPreserve()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reparsed, err := Parse(rendered)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range reparsed.Nodes() {
+		if node.Directive == nil || node.Directive.KeywordValue != "setenv" {
+			continue
+		}
+		got := make([]string, 0, len(node.Directive.Arguments))
+		for _, argument := range node.Directive.Arguments {
+			got = append(got, argument.Value)
+		}
+		want := []string{"=value"}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("reparsed arguments = %#v, want %#v (rendered %q)", got, want, rendered)
+		}
+		return
+	}
+	t.Fatalf("rendered output has no SetEnv directive: %q", rendered)
 }
