@@ -25,7 +25,7 @@ const Usage = `Usage:
   ssh-config -to-yaml -src <SSH config file>
   ssh-config -to-ssh -src <v3 YAML or JSON file> [-document-path <path>]
   ssh-config -legacy -src <source file or directory> -dest <destination file>
-  ssh-config -help
+  ssh-config -help | -h
   ssh-config -version
 `
 

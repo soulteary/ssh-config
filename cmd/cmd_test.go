@@ -406,3 +406,25 @@ func TestResetFlags(t *testing.T) {
 		t.Errorf("After ResetFlags(), ParseArgs() = %v, want %v", result, expected)
 	}
 }
+
+func TestParseArgsAcceptsHAsHelpAlias(t *testing.T) {
+	originalArgs := os.Args
+	defer func() {
+		os.Args = originalArgs
+		Cmd.ResetFlags()
+	}()
+
+	for _, flagName := range []string{"-h", "-help"} {
+		Cmd.ResetFlags()
+		os.Args = []string{"ssh-config", flagName}
+		if got := Cmd.ParseArgs(); !got.ShowHelp {
+			t.Fatalf("ParseArgs(%q).ShowHelp = false, want true", flagName)
+		}
+	}
+}
+
+func TestUsageMentionsBothHelpSpellings(t *testing.T) {
+	if !strings.Contains(Cmd.Usage, "-help | -h") {
+		t.Fatalf("Usage does not document both help spellings:\n%s", Cmd.Usage)
+	}
+}
