@@ -18,6 +18,7 @@ package lexer
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -403,8 +404,18 @@ func TestLexer_nextAtEOF(t *testing.T) {
 	if r := l.next(); r != 'a' {
 		t.Errorf("first next() = %v, want 'a'", r)
 	}
+	if r := l.next(); r != eof {
+		t.Errorf("next() at EOF = %v, want eof", r)
+	}
+}
+
+func TestLexer_nextDistinguishesNULFromEOF(t *testing.T) {
+	l := NewLexer("\x00")
 	if r := l.next(); r != 0 {
-		t.Errorf("next() at EOF = %v, want 0", r)
+		t.Errorf("next() over NUL = %v, want 0", r)
+	}
+	if r := l.next(); r != eof {
+		t.Errorf("next() at EOF = %v, want eof", r)
 	}
 }
 
@@ -476,5 +487,44 @@ func TestLex_LexErrorPath(t *testing.T) {
 	}
 	if err.Error() == "" {
 		t.Error("error message should not be empty")
+	}
+}
+
+func TestLexKeepsContentAfterNULByte(t *testing.T) {
+	input := "Host alpha\n  HostName a.example\x00\n  User ua\nHost beta\n  HostName b.example\n"
+	tokens, err := Lex(input)
+	if err != nil {
+		t.Fatalf("Lex() error = %v", err)
+	}
+
+	var hosts []string
+	for index, token := range tokens {
+		if token.Kind == TokenKeyword && strings.EqualFold(token.Value, "Host") && index+1 < len(tokens) {
+			hosts = append(hosts, tokens[index+1].Value)
+		}
+	}
+	want := []string{"alpha", "beta"}
+	if !reflect.DeepEqual(hosts, want) {
+		t.Fatalf("Host patterns = %#v, want %#v", hosts, want)
+	}
+
+	var carriesNUL bool
+	for _, token := range tokens {
+		if strings.Contains(token.Value, "\x00") {
+			carriesNUL = true
+		}
+	}
+	if !carriesNUL {
+		t.Fatal("no token retained the NUL byte; the scanner dropped it")
+	}
+}
+
+func TestLexTreatsNULAsOrdinaryArgumentByte(t *testing.T) {
+	tokens, err := Lex("Host a\x00b\n")
+	if err != nil {
+		t.Fatalf("Lex() error = %v", err)
+	}
+	if len(tokens) < 2 || tokens[1].Value != "a\x00b" {
+		t.Fatalf("argument = %#v, want %q as a single token", tokens, "a\x00b")
 	}
 }
