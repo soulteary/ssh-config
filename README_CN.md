@@ -105,7 +105,7 @@ cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 ### 选项
 
 - `-to-yaml, -to-json, -to-ssh`: 指定输出格式 (yaml/json/config)，同一时间，输出格式只能指定为一种。
-- `-src`: 指定输入文件；显式路径优先于管道标准输入，省略时无损模式读取 `~/.ssh/config`，旧模式扫描 `~/.ssh`。管道标准输入若不含任何非空白字节会被拒绝，避免上游命令失败时把 `-dest` 覆盖成空文件
+- `-src`: 指定输入文件；显式路径优先于管道标准输入，省略时无损模式读取 `~/.ssh/config`，旧模式扫描 `~/.ssh`（其中只读取 `config` 与 `config.d/*`，避免把放在旁边的无关文件一并读入；用 `-src` 显式指定的目录仍会整目录扫描，不限文件名）。管道标准输入若不含任何非空白字节会被拒绝，避免上游命令失败时把 `-dest` 覆盖成空文件
 - `-dest`: 指定要保存的配置文件路径，包括输入来自标准输入时；父目录必须已存在，省略时将转换结果写入标准输出
 - `-document-path`: 当 `-to-ssh` 读取包含多个文档的 v3 Schema 时，按 `path` 选择要转换的文档
 - `-legacy`: 使用原有的有损 map/array 格式，并启用目录扫描。
