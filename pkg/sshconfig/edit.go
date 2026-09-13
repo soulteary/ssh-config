@@ -189,11 +189,17 @@ func QuoteArgument(argument string) string {
 	}
 	var out strings.Builder
 	out.WriteByte('"')
-	for _, ch := range argument {
+	// Walk bytes, not runes. Ranging over the string decodes invalid UTF-8 as
+	// utf8.RuneError, and WriteRune would then emit U+FFFD in its place, so an
+	// argument holding arbitrary bytes did not survive a reparse. Valid UTF-8 is
+	// unaffected: a continuation byte is always >= 0x80 and so never collides
+	// with the two bytes escaped here.
+	for index := 0; index < len(argument); index++ {
+		ch := argument[index]
 		if ch == '\\' || ch == '"' {
 			out.WriteByte('\\')
 		}
-		out.WriteRune(ch)
+		out.WriteByte(ch)
 	}
 	out.WriteByte('"')
 	return out.String()

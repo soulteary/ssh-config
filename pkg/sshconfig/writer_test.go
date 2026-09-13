@@ -347,3 +347,44 @@ func TestAppendDirectiveRoundTripsLeadingEqualsArgument(t *testing.T) {
 	}
 	t.Fatalf("rendered output has no SetEnv directive: %q", rendered)
 }
+
+// Raised by review on #130. Ranging over the string decoded invalid UTF-8 as
+// utf8.RuneError and WriteRune emitted U+FFFD in its place, so an argument
+// holding arbitrary bytes did not survive a reparse. The space case reached the
+// quoted path before the leading-'=' rule existed, so this was latent, not new.
+func TestQuoteArgumentPreservesArbitraryBytes(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		argument string
+	}{
+		{name: "leading equals", argument: string([]byte{'=', 0xff})},
+		{name: "space", argument: string([]byte{'a', 0xff, ' ', 'b'})},
+		{name: "quote", argument: string([]byte{0xfe, '"', 0xff})},
+		{name: "backslash", argument: string([]byte{0xfe, '\\', 0xff})},
+		{name: "valid utf8 is unchanged", argument: "naïve 主机 # x"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			doc, err := Parse([]byte("SetEnv " + QuoteArgument(test.argument) + "\n"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, node := range doc.Nodes() {
+				if node.Directive == nil || node.Directive.KeywordValue != "setenv" {
+					continue
+				}
+				if len(node.Directive.Arguments) != 1 {
+					t.Fatalf("reparsed %d arguments, want 1", len(node.Directive.Arguments))
+				}
+				if got := node.Directive.Arguments[0].Value; got != test.argument {
+					t.Fatalf("reparsed % x, want % x", got, test.argument)
+				}
+				return
+			}
+			t.Fatal("rendered output has no SetEnv directive")
+		})
+	}
+}
