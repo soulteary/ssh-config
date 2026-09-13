@@ -673,3 +673,44 @@ func TestPrintConfigs(t *testing.T) {
 		}
 	}
 }
+
+func TestReadSSHConfigsSkipsFilesWithoutAHostBlock(t *testing.T) {
+	directory := t.TempDir()
+	writeScanFixture(t, filepath.Join(directory, "config"), "Host prod\n  HostName 10.0.0.1\n")
+	// A file that merely mentions a known keyword is not configuration the
+	// legacy schema can represent, and must not be read in.
+	writeScanFixture(t, filepath.Join(directory, "notes.txt"),
+		"# reminder: rotate the deploy credential\nCompression yes\n")
+
+	configs, err := fn.ReadSSHConfigs(directory)
+	if err != nil {
+		t.Fatalf("ReadSSHConfigs() error = %v", err)
+	}
+	if _, picked := configs.Configs[filepath.Join(directory, "notes.txt")]; picked {
+		t.Fatal("a file without a Host or Match block was treated as configuration")
+	}
+	if _, picked := configs.Configs[filepath.Join(directory, "config")]; !picked {
+		t.Fatal("the real configuration file was not picked up")
+	}
+}
+
+func TestReadSSHConfigsAcceptsMatchOnlyFragment(t *testing.T) {
+	directory := t.TempDir()
+	writeScanFixture(t, filepath.Join(directory, "config"),
+		"Match host bastion\n  User admin\n")
+
+	configs, err := fn.ReadSSHConfigs(directory)
+	if err != nil {
+		t.Fatalf("ReadSSHConfigs() error = %v", err)
+	}
+	if _, picked := configs.Configs[filepath.Join(directory, "config")]; !picked {
+		t.Fatal("a Match block was not recognized as configuration")
+	}
+}
+
+func writeScanFixture(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}

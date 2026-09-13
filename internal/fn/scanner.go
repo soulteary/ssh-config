@@ -81,9 +81,16 @@ func IsConfigFile(path string) bool {
 	return hasConfigDirective(path, func(string) bool { return true })
 }
 
+// isLegacyDirectoryConfigFile reports whether a file found by the -legacy
+// directory scan should be treated as configuration. It requires a Host or
+// Match block rather than any known keyword: the legacy schema is host-keyed
+// and already refuses directives that appear before the first Host, so a
+// fragment with no block cannot be converted anyway. Accepting any of the 128
+// keywords meant an unrelated file kept under ~/.ssh was read in full and its
+// comments were reproduced in the output as Notes.
 func isLegacyDirectoryConfigFile(path string) bool {
 	return hasConfigDirective(path, func(keyword string) bool {
-		return keyword != "include"
+		return keyword == "host" || keyword == "match"
 	})
 }
 
