@@ -110,7 +110,7 @@ cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 - `-document-path`: 当 `-to-ssh` 读取包含多个文档的 v3 Schema 时，按 `path` 选择要转换的文档
 - `-legacy`: 使用原有的有损 map/array 格式，并启用目录扫描。
 - `-lossless`: 已弃用的兼容参数；v3 已默认使用无损转换。
-- `-help`: 查看程序命令行帮助
+- `-help`, `-h`: 查看程序命令行帮助
 - `-version`: 输出发布版本、提交、构建时间和工作树状态
 
 ### 示例

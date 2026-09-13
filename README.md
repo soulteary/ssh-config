@@ -106,7 +106,7 @@ cat test.yaml | docker run --rm -i soulteary/ssh-config:latest -to-yaml
 - `-document-path`: Select a document by its `path` when `-to-ssh` reads a multi-document v3 schema.
 - `-legacy`: Use the previous lossy map/array formats. This mode also enables directory scanning.
 - `-lossless`: Deprecated compatibility alias; lossless conversion is already the default in v3.
-- `-help`: View program command-line help
+- `-help`, `-h`: View program command-line help
 - `-version`: Print release, commit, build, and tree-state metadata
 
 ### Examples

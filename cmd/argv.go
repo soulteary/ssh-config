@@ -74,6 +74,9 @@ func initFlags() {
 	flag.StringVar(&args.Dest, "dest", DEFAULT_DEST, "Destination file path, valid when using non-pipeline mode")
 	flag.StringVar(&args.DocumentPath, "document-path", DEFAULT_DOCUMENT_PATH, "Select a document path from a multi-document v3 schema when converting to SSH")
 	flag.BoolVar(&args.ShowHelp, "help", DEFAULT_HELP, "Show help")
+	// Without this, -h falls through to the flag package's built-in handling,
+	// which prints its own generated listing to stderr instead of Usage.
+	flag.BoolVar(&args.ShowHelp, "h", DEFAULT_HELP, "Show help (alias for -help)")
 	flag.BoolVar(&args.Version, "version", DEFAULT_VERSION, "Show version")
 }
 
