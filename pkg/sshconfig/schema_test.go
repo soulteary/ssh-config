@@ -69,7 +69,7 @@ func TestSchemaRendersOnlyChangedDirective(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, _ := reconstructed.MarshalPreserve()
-	want := []byte("# untouched\r\nUser \"new user\" # account\r\nHost example\r\n")
+	want := []byte("# untouched\r\n\tUser \"new user\" # account\r\nHost example\r\n")
 	if !bytes.Equal(got, want) {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
@@ -187,7 +187,7 @@ func TestSchemaEditPreservesMissingFinalNewline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []byte("Host example\nUser new")
+	want := []byte("Host example\n  User new")
 	if !bytes.Equal(got, want) {
 		t.Fatalf("output = %q, want %q", got, want)
 	}
@@ -883,5 +883,88 @@ func assertSchemaDocumentBytes(t *testing.T, schema Schema, path string, want []
 	}
 	if !bytes.Equal(got, want) {
 		t.Fatalf("schema round trip mismatch\n got: %q\nwant: %q", got, want)
+	}
+}
+
+func TestSchemaRenderKeepsIndentOfReplacedLine(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "two spaces",
+			input: "Host web\n  Port 2222\n",
+			want:  "Host web\n  Port 2200\n",
+		},
+		{
+			name:  "tab",
+			input: "Host web\n\tPort 2222\n",
+			want:  "Host web\n\tPort 2200\n",
+		},
+		{
+			name:  "column zero",
+			input: "Host web\nPort 2222\n",
+			want:  "Host web\nPort 2200\n",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			doc, _ := Parse([]byte(test.input))
+			schemaDocument, err := doc.ToSchema("")
+			if err != nil {
+				t.Fatal(err)
+			}
+			schemaDocument.Nodes[1].Directive.Arguments = []string{"2200"}
+			reconstructed, err := schemaDocument.Document()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := reconstructed.MarshalPreserve()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != test.want {
+				t.Fatalf("output = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+// The schema path and Document.ReplaceDirective describe the same edit, so they
+// have to agree on the bytes they produce.
+func TestSchemaRenderMatchesReplaceDirectiveIndentation(t *testing.T) {
+	t.Parallel()
+	input := []byte("Host web\n  Port 2222\n")
+
+	viaAPI, _ := Parse(input)
+	var target NodeID
+	for _, node := range viaAPI.Nodes() {
+		if node.Directive != nil && node.Directive.KeywordValue == "port" {
+			target = node.ID
+		}
+	}
+	if err := viaAPI.ReplaceDirective(target, "Port", "2200"); err != nil {
+		t.Fatal(err)
+	}
+	apiBytes, _ := viaAPI.MarshalPreserve()
+
+	viaSchema, _ := Parse(input)
+	schemaDocument, err := viaSchema.ToSchema("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaDocument.Nodes[1].Directive.Arguments = []string{"2200"}
+	reconstructed, err := schemaDocument.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	schemaBytes, _ := reconstructed.MarshalPreserve()
+
+	if !bytes.Equal(apiBytes, schemaBytes) {
+		t.Fatalf("ReplaceDirective = %q, schema path = %q; both describe the same edit", apiBytes, schemaBytes)
 	}
 }
