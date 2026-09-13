@@ -1,15 +1,15 @@
 {
   "schema_version": "1.0",
   "tests": {
-    "total": 244,
-    "passed": 244,
+    "total": 250,
+    "passed": 250,
     "failed": 0,
     "skipped": 0
   },
   "coverage": {
-    "covered_statements": 2172,
-    "total_statements": 2352,
-    "percentage": 92.35,
+    "covered_statements": 2197,
+    "total_statements": 2377,
+    "percentage": 92.43,
     "threshold": 85
   },
   "packages": [
@@ -23,9 +23,9 @@
     {
       "name": "cmd",
       "status": "pass",
-      "tests": 6,
+      "tests": 8,
       "failed": 0,
-      "coverage": 98.44
+      "coverage": 98.68
     },
     {
       "name": "integration",
@@ -44,7 +44,7 @@
     {
       "name": "internal/fn",
       "status": "pass",
-      "tests": 50,
+      "tests": 52,
       "failed": 0,
       "coverage": 95.97
     },
@@ -65,9 +65,9 @@
     {
       "name": "pkg/sshconfig",
       "status": "pass",
-      "tests": 80,
+      "tests": 82,
       "failed": 0,
-      "coverage": 91.53
+      "coverage": 91.64
     }
   ],
   "failures": null
