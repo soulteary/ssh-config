@@ -1,7 +1,9 @@
 package sshconfig
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -51,13 +53,25 @@ type IncludeEdge struct {
 	Targets  []string
 }
 
+// SkippedInclude records a glob match that was matched by an Include pattern
+// but not read, together with the reason.
+type SkippedInclude struct {
+	FromPath string
+	NodeID   NodeID
+	Pattern  string
+	Path     string
+	Reason   string
+}
+
 // DocumentGraph retains all source documents and Include relationships.
 type DocumentGraph struct {
 	Entry string
 	Files map[string]*ResolvedFile
 	Edges []IncludeEdge
 	// Order records traversal order, including repeated non-recursive includes.
-	Order         []string
+	Order []string
+	// Skipped lists glob matches that were passed over instead of read.
+	Skipped       []SkippedInclude
 	resolvedBytes int64
 	resolvedFiles int
 }
@@ -90,31 +104,52 @@ func ResolveIncludes(entry string, options ResolveOptions) (*DocumentGraph, erro
 		Entry: absolute,
 		Files: make(map[string]*ResolvedFile),
 	}
-	if err := graph.resolveFile(absolute, options, 0, make(map[string]bool)); err != nil {
+	if _, err := graph.resolveFile(absolute, options, 0, make(map[string]bool), false); err != nil {
 		return nil, err
 	}
 	return graph, nil
 }
 
-func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth int, stack map[string]bool) error {
+// resolveFile reads one file into the graph. When optional is set the file came
+// from an Include glob rather than being named directly, so a match that cannot
+// be configuration is passed over and reported through the returned skipped
+// flag instead of failing the whole traversal. Every other failure, including
+// depth, cycles and resource limits, stays fatal.
+func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth int, stack map[string]bool, optional bool) (skipped bool, err error) {
 	path = filepath.Clean(path)
 	if depth > options.MaxDepth {
-		return fmt.Errorf("sshconfig: include depth exceeds %d at %s", options.MaxDepth, path)
+		return false, fmt.Errorf("sshconfig: include depth exceeds %d at %s", options.MaxDepth, path)
 	}
 	if stack[path] {
-		return fmt.Errorf("sshconfig: recursive include cycle at %s", path)
+		return false, fmt.Errorf("sshconfig: recursive include cycle at %s", path)
 	}
 	if options.MaxFiles > 0 && g.resolvedFiles >= options.MaxFiles {
-		return fmt.Errorf("sshconfig: include file count exceeds %d at %s", options.MaxFiles, path)
+		return false, fmt.Errorf("sshconfig: include file count exceeds %d at %s", options.MaxFiles, path)
 	}
 	file, err := openIncludeFile(path)
 	if err != nil {
-		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
+		// filepath.Glob matches through Lstat, so a dangling symbolic link is
+		// returned as a match that cannot be opened.
+		if optional && errors.Is(err, fs.ErrNotExist) {
+			return true, nil
+		}
+		return false, fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}
 	defer file.Close()
+	// A pattern such as config.d/* also matches subdirectories. Decide on the
+	// opened descriptor rather than on the path, so the check cannot be raced.
+	if optional {
+		info, statErr := file.Stat()
+		if statErr != nil {
+			return false, fmt.Errorf("sshconfig: inspect included file %s: %w", path, statErr)
+		}
+		if !info.Mode().IsRegular() {
+			return true, nil
+		}
+	}
 	if options.CheckPermissions {
 		if err := checkIncludePermissions(file, path); err != nil {
-			return err
+			return false, err
 		}
 	}
 	readLimit := options.MaxFileBytes
@@ -132,25 +167,25 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 		data, exceeded, err = readAllAtMost(file, readLimit)
 		if exceeded {
 			if totalLimitApplied {
-				return fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
+				return false, fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
 			}
-			return fmt.Errorf("sshconfig: included file %s exceeds maximum size of %d bytes", path, options.MaxFileBytes)
+			return false, fmt.Errorf("sshconfig: included file %s exceeds maximum size of %d bytes", path, options.MaxFileBytes)
 		}
 	} else {
 		data, err = readAllLimited(file, 0, "")
 	}
 	if err != nil {
-		return fmt.Errorf("sshconfig: read included file %s: %w", path, err)
+		return false, fmt.Errorf("sshconfig: read included file %s: %w", path, err)
 	}
 	dataBytes := int64(len(data))
 	if options.MaxTotalBytes > 0 && (dataBytes > options.MaxTotalBytes || g.resolvedBytes > options.MaxTotalBytes-dataBytes) {
-		return fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
+		return false, fmt.Errorf("sshconfig: include bytes exceed total limit of %d at %s", options.MaxTotalBytes, path)
 	}
 	g.resolvedBytes += dataBytes
 	g.resolvedFiles++
 	doc, err := Parse(data)
 	if err != nil {
-		return fmt.Errorf("sshconfig: parse included file %s: %w", path, err)
+		return false, fmt.Errorf("sshconfig: parse included file %s: %w", path, err)
 	}
 	if _, exists := g.Files[path]; !exists {
 		g.Files[path] = &ResolvedFile{Path: path, Document: doc}
@@ -166,14 +201,14 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 		for _, argument := range node.Directive.Arguments {
 			pattern, err := expandIncludePattern(argument.Value, options)
 			if err != nil {
-				return fmt.Errorf("sshconfig: %s:%d: include %q: %w", path, argument.Position.Line, argument.Value, err)
+				return false, fmt.Errorf("sshconfig: %s:%d: include %q: %w", path, argument.Position.Line, argument.Value, err)
 			}
 			if !filepath.IsAbs(pattern) {
 				pattern = filepath.Join(options.RelativeBase, pattern)
 			}
 			matches, err := filepath.Glob(filepath.Clean(pattern))
 			if err != nil {
-				return fmt.Errorf("sshconfig: %s:%d: invalid include pattern %q: %w", path, argument.Position.Line, pattern, err)
+				return false, fmt.Errorf("sshconfig: %s:%d: invalid include pattern %q: %w", path, argument.Position.Line, pattern, err)
 			}
 			sort.Strings(matches)
 			edge := IncludeEdge{
@@ -184,13 +219,23 @@ func (g *DocumentGraph) resolveFile(path string, options ResolveOptions, depth i
 			}
 			g.Edges = append(g.Edges, edge)
 			for _, match := range matches {
-				if err := g.resolveFile(match, options, depth+1, stack); err != nil {
-					return err
+				matchSkipped, matchErr := g.resolveFile(match, options, depth+1, stack, true)
+				if matchErr != nil {
+					return false, matchErr
+				}
+				if matchSkipped {
+					g.Skipped = append(g.Skipped, SkippedInclude{
+						FromPath: path,
+						NodeID:   node.ID,
+						Pattern:  argument.Value,
+						Path:     match,
+						Reason:   "not a readable regular file",
+					})
 				}
 			}
 		}
 	}
-	return nil
+	return false, nil
 }
 
 func expandIncludePattern(pattern string, options ResolveOptions) (string, error) {
