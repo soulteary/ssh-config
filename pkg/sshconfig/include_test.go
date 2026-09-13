@@ -201,3 +201,56 @@ func writeTestConfig(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestResolveIncludesSkipsUnreadableGlobMatches(t *testing.T) {
+	directory := t.TempDir()
+	includeDir := filepath.Join(directory, "config.d")
+	if err := os.MkdirAll(filepath.Join(includeDir, "subdir"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeIncludeFile(t, filepath.Join(includeDir, "10-a.conf"), "Host a\n")
+	writeIncludeFile(t, filepath.Join(includeDir, "20-b.conf"), "Host b\n")
+	if err := os.Symlink(filepath.Join(directory, "missing"), filepath.Join(includeDir, "30-dangling.conf")); err != nil {
+		t.Skipf("symbolic links are unavailable: %v", err)
+	}
+
+	entry := filepath.Join(directory, "config")
+	writeIncludeFile(t, entry, "Include config.d/*\nHost main\n")
+
+	graph, err := ResolveIncludes(entry, ResolveOptions{RelativeBase: directory})
+	if err != nil {
+		t.Fatalf("ResolveIncludes() error = %v, want the unusable matches to be skipped", err)
+	}
+
+	for _, name := range []string{"10-a.conf", "20-b.conf"} {
+		if _, ok := graph.Files[filepath.Join(includeDir, name)]; !ok {
+			t.Fatalf("%s was not included", name)
+		}
+	}
+	if len(graph.Skipped) != 2 {
+		t.Fatalf("Skipped = %#v, want the subdirectory and the dangling link", graph.Skipped)
+	}
+	for _, skipped := range graph.Skipped {
+		base := filepath.Base(skipped.Path)
+		if base != "subdir" && base != "30-dangling.conf" {
+			t.Fatalf("unexpected skipped entry %#v", skipped)
+		}
+		if skipped.Pattern != "config.d/*" {
+			t.Fatalf("Skipped.Pattern = %q, want the originating pattern", skipped.Pattern)
+		}
+	}
+}
+
+func TestResolveIncludesStillFailsOnUnreadableEntry(t *testing.T) {
+	directory := t.TempDir()
+	if _, err := ResolveIncludes(filepath.Join(directory, "missing"), ResolveOptions{}); err == nil {
+		t.Fatal("ResolveIncludes() error = nil, want an error for a named entry that does not exist")
+	}
+}
+
+func writeIncludeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}

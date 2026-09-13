@@ -127,6 +127,11 @@ doc, err := sshconfig.ParseReader(reader, sshconfig.ParseOptions{MaxBytes: 4 << 
 in `ResolveOptions`. Set these limits when Include graphs are supplied by an
 untrusted caller; zero keeps the corresponding limit disabled.
 
+A glob match that is not a readable regular file, such as a subdirectory of
+`config.d` or a dangling symbolic link, is skipped rather than failing the
+traversal, and is listed in `DocumentGraph.Skipped`. A file named directly,
+including the entry file, must still be readable.
+
 Use `UnmarshalSchemaYAML` or `UnmarshalSchemaJSON` for strict decoding, then
 call `Schema.Document(path)` and `Document.MarshalPreserve()` to reconstruct
 SSH source.
