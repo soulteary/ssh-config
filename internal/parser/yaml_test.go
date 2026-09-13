@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strings"
 	"testing"
 
 	Define "github.com/soulteary/ssh-config/v3/internal/define"
@@ -592,5 +593,31 @@ func TestYAMLConfigWithGroupCommon(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestConvertToYAMLGlobalUsesFirstObtainedValue(t *testing.T) {
+	// ssh_config(5) keeps the first value obtained for a keyword, so the YAML
+	// view of two "Host *" blocks has to agree with what ssh would apply.
+	input := []Define.HostConfig{
+		{Name: "*", Config: map[string]string{"Port": "22"}},
+		{Name: "*", Config: map[string]string{"Port": "2222", "User": "ops"}},
+	}
+
+	got := string(Parser.ConvertToYAML(input))
+	if !strings.Contains(got, `Port: "22"`) {
+		t.Fatalf("ConvertToYAML() = %q, want the first Port value 22", got)
+	}
+	if strings.Contains(got, `Port: "2222"`) {
+		t.Fatalf("ConvertToYAML() = %q, want the later Port value to be ignored", got)
+	}
+	// A keyword that only the later block sets is still inherited.
+	if !strings.Contains(got, "User: ops") {
+		t.Fatalf("ConvertToYAML() = %q, want User from the second block", got)
+	}
+
+	ssh := string(Parser.ConvertToSSH(input))
+	if !strings.Contains(ssh, "Port 22") {
+		t.Fatalf("ConvertToSSH() = %q, want the first Host * block preserved", ssh)
 	}
 }
