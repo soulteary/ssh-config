@@ -27,7 +27,10 @@ func ConvertToJSON(input []Define.HostConfig) []byte {
 	hostConfigs := make([]Define.HostConfigForJSON, 0)
 	for _, hostConfig := range input {
 		var config Define.HostConfigForJSON
-		config.Name = hostConfig.Name
+		// The JSON schema is a flat host list with no group concept, so a group
+		// prefix has to be folded into the name here, the way ConvertToSSH does
+		// it. Emitting the bare name silently renames the host.
+		config.Name = hostConfig.Extra.Prefix + hostConfig.Name
 		config.Notes = hostConfig.Notes
 		config.Data = make(Define.HostConfigDataForJSON)
 

@@ -19,6 +19,7 @@ package parser_test
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	Define "github.com/soulteary/ssh-config/v3/internal/define"
@@ -163,5 +164,41 @@ func TestGroupJSONConfig(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func TestConvertToJSONKeepsGroupPrefix(t *testing.T) {
+	input := []Define.HostConfig{{
+		Name:   "server1",
+		Config: map[string]string{"HostName": "1.2.3.4"},
+		Extra:  Define.HostExtraConfig{Prefix: "public-"},
+	}}
+
+	got := string(Parser.ConvertToJSON(input))
+	if !strings.Contains(got, `"Name":"public-server1"`) {
+		t.Fatalf("ConvertToJSON() = %s, want the group prefix folded into Name", got)
+	}
+}
+
+func TestLegacyYAMLToJSONToSSHKeepsHostName(t *testing.T) {
+	source := "Group team:\n  Prefix: \"public-\"\n  Hosts:\n    server1:\n      config:\n        HostName: 1.2.3.4\n"
+
+	fromYAML, err := Parser.GroupYAMLConfigStrict(source)
+	if err != nil {
+		t.Fatalf("GroupYAMLConfigStrict() error = %v", err)
+	}
+	direct := string(Parser.ConvertToSSH(fromYAML))
+
+	viaJSON, err := Parser.GroupJSONConfigStrict(string(Parser.ConvertToJSON(fromYAML)))
+	if err != nil {
+		t.Fatalf("GroupJSONConfigStrict() error = %v", err)
+	}
+	roundTripped := string(Parser.ConvertToSSH(viaJSON))
+
+	if !strings.Contains(direct, "Host public-server1") {
+		t.Fatalf("YAML to SSH = %q, want Host public-server1", direct)
+	}
+	if !strings.Contains(roundTripped, "Host public-server1") {
+		t.Fatalf("YAML to JSON to SSH = %q, want Host public-server1", roundTripped)
 	}
 }
