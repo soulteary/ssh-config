@@ -145,7 +145,7 @@ func (s SchemaDocument) document() (*Document, error) {
 			output.Write(raw)
 			continue
 		}
-		output.Write(renderSchemaDirective(node.Directive, detectLineEnding(raw), len(raw) == 0))
+		output.Write(renderSchemaDirective(node.Directive, detectIndent(raw), detectLineEnding(raw), len(raw) == 0))
 	}
 	return Parse(output.Bytes())
 }
@@ -342,11 +342,12 @@ func schemaRawMatchesDirective(raw []byte, expected *SchemaDirective) bool {
 		slices.Equal(actual.Arguments, expected.Arguments)
 }
 
-func renderSchemaDirective(directive *SchemaDirective, lineEnding string, defaultLineEnding bool) []byte {
+func renderSchemaDirective(directive *SchemaDirective, indent []byte, lineEnding string, defaultLineEnding bool) []byte {
 	if lineEnding == "" && defaultLineEnding {
 		lineEnding = "\n"
 	}
 	var output bytes.Buffer
+	output.Write(indent)
 	output.WriteString(directive.Keyword)
 	if len(directive.Arguments) > 0 {
 		output.WriteByte(' ')
@@ -362,6 +363,19 @@ func renderSchemaDirective(directive *SchemaDirective, lineEnding string, defaul
 	}
 	output.WriteString(lineEnding)
 	return output.Bytes()
+}
+
+// detectIndent returns the leading horizontal whitespace of a physical line so a
+// re-rendered directive keeps the block indentation of the line it replaces.
+// Document.ReplaceDirective already preserves it by replaying the original
+// bytes up to the keyword; this keeps the schema path consistent with it.
+func detectIndent(raw []byte) []byte {
+	for index := 0; index < len(raw); index++ {
+		if !isHorizontalSpace(raw[index]) {
+			return raw[:index]
+		}
+	}
+	return nil
 }
 
 func detectLineEnding(raw []byte) string {

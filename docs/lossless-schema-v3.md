@@ -74,7 +74,9 @@ A directive view contains:
 Exported directive nodes contain both raw bytes and the editable view. If the
 view still describes the raw line exactly, reconstruction copies the raw bytes.
 If any semantic field changes, reconstruction renders that line canonically
-while retaining its original line-ending presence and style. A new directive
+while retaining its original indentation and its line-ending presence and
+style. Spacing inside the line, such as a `=` separator or runs of spaces
+between arguments, is normalized. A new directive
 may omit `rawBase64`; it is rendered canonically with LF.
 
 Blank nodes may represent an empty line without raw bytes. Every other
