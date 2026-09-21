@@ -59,7 +59,7 @@ jobs:
           commit: "false"
 
       - name: Generate Go quality report
-        uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
+        uses: soulteary/goreportcard-action@dd1754c82b5ed5501ecbb3979cd2545657e1dd57 # v1.1.2
         with:
           version: source
           threshold: "90"
@@ -112,7 +112,7 @@ jobs:
         run: govulncheck ./...
 
       - name: Update Go quality report
-        uses: soulteary/goreportcard-action@9480215498804c431e4561b4d3e50d925e16b9bd # v1.1.0
+        uses: soulteary/goreportcard-action@dd1754c82b5ed5501ecbb3979cd2545657e1dd57 # v1.1.2
         with:
           version: source
           threshold: "90"
