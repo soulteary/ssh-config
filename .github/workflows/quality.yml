@@ -52,7 +52,7 @@ jobs:
         run: go mod tidy -diff
 
       - name: Test and generate coverage report
-        uses: soulteary/go-test-report-action@a5e77d563843af6c7a0cc3c573640fc2cd94934a # v1.1.0
+        uses: soulteary/go-test-report-action@091a510dcf63ba5960b91af5832582a627bd5d6c # v1.1.1
         with:
           version: source
           coverage_threshold: "85"
@@ -90,7 +90,7 @@ jobs:
         run: go mod tidy -diff
 
       - name: Test with race detector and update coverage report
-        uses: soulteary/go-test-report-action@a5e77d563843af6c7a0cc3c573640fc2cd94934a # v1.1.0
+        uses: soulteary/go-test-report-action@091a510dcf63ba5960b91af5832582a627bd5d6c # v1.1.1
         with:
           version: source
           race: "true"
