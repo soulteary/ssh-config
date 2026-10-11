@@ -138,7 +138,7 @@ jobs:
           PYTHON
   reports:
     needs: release_gate
-    if: "always() && needs.release_gate.result == 'success' && needs.release_gate.outputs.enabled == 'true'"
+    if: needs.release_gate.outputs.enabled == 'true'
     name: Release and manual Go reports
     runs-on: ubuntu-latest
     timeout-minutes: 25

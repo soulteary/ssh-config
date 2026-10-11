@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   pull-request:
-    if: "always() && (github.event_name == 'pull_request')"
+    if: github.event_name == 'pull_request'
     name: PR tests and local reports
     runs-on: ubuntu-latest
     timeout-minutes: 15
