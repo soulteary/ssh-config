@@ -53,7 +53,7 @@ go mod tidy
 The schema's `schemaVersion: 3` is independent of the Go module and application
 version. The v3 application continues to read and write schema version 3.
 
-Version 3 requires Go 1.27 or newer. Applications and tools that build the
+Version 3 requires Go 1.27.2 or newer. Applications and tools that build the
 module from source must upgrade their Go toolchain before moving from v2.
 
 ## Release archives

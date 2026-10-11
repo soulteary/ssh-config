@@ -152,7 +152,7 @@ See the [v2 to v3 migration guide](./docs/migration-v3.md) before updating scrip
 
 ### Dependencies
 
-- Go 1.27+
+- Go 1.27.2+
 
 ### Build
 

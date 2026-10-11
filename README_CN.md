@@ -150,7 +150,7 @@ ssh-config -to-ssh -src config.v3.yaml -dest ~/.ssh/config
 
 ### 依赖
 
-- Go 1.27+
+- Go 1.27.2+
 
 ### 构建
 
