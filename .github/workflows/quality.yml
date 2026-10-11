@@ -50,6 +50,7 @@ jobs:
         run: go mod tidy -diff
 
       - name: Remove stale generated report evidence
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
