@@ -29,24 +29,28 @@ concurrency:
 
 jobs:
   pull-request:
-    if: github.event_name == 'pull_request'
+    if: "always() && (github.event_name == 'pull_request')"
     name: PR tests and local reports
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
+        if: "!cancelled() && (success())"
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Go
+        if: "!cancelled() && (success())"
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
 
       - name: Download modules
+        if: "!cancelled() && (success())"
         run: go mod download
 
       - name: Verify module files
+        if: "!cancelled() && (success())"
         run: go mod tidy -diff
 
       - name: Remove stale generated report evidence
@@ -59,6 +63,7 @@ jobs:
           rm -f -- .github/go-test-report.md .github/go-test-report.json .github/coverage.svg .github/goreportcard.svg .github/goreportcard-report.md
           rm -rf -- .github/test-results
       - name: Test, race and coverage (GTR v1.1.2)
+        if: "!cancelled() && (success())"
         id: go_test_report
         uses: soulteary/go-test-report-action@bf04b539f7bf2a6f67d602da4259904b3dcdeba1  # v1.1.2
         with:
