@@ -81,6 +81,7 @@ jobs:
           report: "true"
           commit: "false"
       - name: Upload raw test results
+        if: "!cancelled() && steps.report_cleanup.outcome == 'success'"
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-test-report-pr-${{ github.sha }}-${{ github.run_attempt }}
@@ -95,7 +96,6 @@ jobs:
           retention-days: 7
 
           include-hidden-files: true
-        if: always()
   main:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -134,6 +134,7 @@ jobs:
         run: govulncheck ./...
 
       - name: Upload raw test results
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-test-report-${{ github.sha }}-${{ github.run_attempt }}
@@ -142,6 +143,5 @@ jobs:
           retention-days: 7
 
           include-hidden-files: true
-        if: always()
     name: Main race tests and vulnerability scan
     timeout-minutes: 30
