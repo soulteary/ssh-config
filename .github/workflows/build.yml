@@ -153,7 +153,7 @@ jobs:
           go build .
 
       - name: Check GoReleaser configuration
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
         with:
           version: v2.18.0
           args: check --config ${{ steps.goreleaser-config.outputs.path || '.goreleaser.yaml' }}
@@ -175,7 +175,7 @@ jobs:
 
       - name: Build release snapshot
         if: github.event_name == 'workflow_dispatch' && steps.release.outputs.publish != 'true'
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
         with:
           version: v2.18.0
           args: release --snapshot --clean
@@ -197,7 +197,7 @@ jobs:
           fi
 
       - name: Publish release
-        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7
+        uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7
         if: success() && steps.release.outputs.publish == 'true'
         with:
           version: v2.18.0
