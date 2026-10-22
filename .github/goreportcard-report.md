@@ -5,7 +5,7 @@
 | Metric | Value |
 | ------ | ----- |
 | Files | 64 |
-| Issues | 17 |
+| Issues | 16 |
 
 ## Checks
 
@@ -16,61 +16,47 @@
 | ineffassign | 100% |
 | gocyclo | 76% |
 | license | 100% |
-| misspell | 96% |
+| misspell | 98% |
 
 ## Issues
 
 ### gocyclo
 
-- `internal/parser/lossless.go`
-  - Line 96: cyclomatic complexity 20 for function classifyStructuredInput
-- `integration/docs_test.go`
-  - Line 98: cyclomatic complexity 16 for function matchingMarkdownDelimiter
-- `pkg/lexer/lexer.go`
-  - Line 145: cyclomatic complexity 26 for function (*Lexer).NextToken
-  - Line 211: cyclomatic complexity 20 for function (*Lexer).scanArgument
+- `internal/fn/fn_test.go`
+  - Line 472: cyclomatic complexity 24 for function TestGetPathContent
+- `internal/fn/scanner_test.go`
+  - Line 373: cyclomatic complexity 20 for function TestReadSSHConfigs_Walk
 - `internal/parser/ssh.go`
   - Line 53: cyclomatic complexity 24 for function groupFromTokens
   - Line 280: cyclomatic complexity 22 for function ParseSSHConfig
-- `internal/parser/parser_test.go`
-  - Line 30: cyclomatic complexity 20 for function TestProcess
-- `internal/parser/yaml.go`
-  - Line 151: cyclomatic complexity 19 for function GroupYAMLConfigStrict
-- `internal/fn/fn_test.go`
-  - Line 472: cyclomatic complexity 24 for function TestGetPathContent
-- `internal/fn/scanner.go`
-  - Line 163: cyclomatic complexity 17 for function readSSHConfigs
-- `pkg/sshconfig/validate.go`
-  - Line 40: cyclomatic complexity 16 for function (*Document).Validate
-- `main.go`
-  - Line 60: cyclomatic complexity 28 for function Run
-- `internal/fn/scanner_test.go`
-  - Line 373: cyclomatic complexity 20 for function TestReadSSHConfigs_Walk
-- `pkg/sshconfig/writer.go`
-  - Line 84: cyclomatic complexity 16 for function saveAtomic
-- `pkg/sshconfig/include.go`
-  - Line 118: cyclomatic complexity 36 for function (*DocumentGraph).resolveFile
-- `pkg/sshconfig/schema.go`
-  - Line 170: cyclomatic complexity 20 for function (Schema).Validate
 - `pkg/sshconfig/parser.go`
   - Line 93: cyclomatic complexity 20 for function parseArguments
+- `pkg/sshconfig/writer.go`
+  - Line 84: cyclomatic complexity 16 for function saveAtomic
+- `main.go`
+  - Line 60: cyclomatic complexity 28 for function Run
+- `pkg/lexer/lexer.go`
+  - Line 145: cyclomatic complexity 26 for function (*Lexer).NextToken
+  - Line 211: cyclomatic complexity 20 for function (*Lexer).scanArgument
+- `pkg/sshconfig/schema.go`
+  - Line 170: cyclomatic complexity 20 for function (Schema).Validate
+- `internal/parser/parser_test.go`
+  - Line 30: cyclomatic complexity 20 for function TestProcess
+- `internal/parser/lossless.go`
+  - Line 96: cyclomatic complexity 20 for function classifyStructuredInput
+- `pkg/sshconfig/validate.go`
+  - Line 40: cyclomatic complexity 16 for function (*Document).Validate
+- `integration/docs_test.go`
+  - Line 98: cyclomatic complexity 16 for function matchingMarkdownDelimiter
+- `pkg/sshconfig/include.go`
+  - Line 118: cyclomatic complexity 36 for function (*DocumentGraph).resolveFile
+- `internal/parser/yaml.go`
+  - Line 151: cyclomatic complexity 19 for function GroupYAMLConfigStrict
+- `internal/fn/scanner.go`
+  - Line 163: cyclomatic complexity 17 for function readSSHConfigs
 
 ### misspell
 
-- `.github/goreportcard-report.md`
-  - Line 61: "Nmae" is a misspelling of "Name"
-  - Line 62: "Nmae" is a misspelling of "Name"
-  - Line 63: "Nmae" is a misspelling of "Name"
-  - Line 64: "Nmae" is a misspelling of "Name"
-  - Line 65: "Nmae" is a misspelling of "Name"
-  - Line 66: "Nmae" is a misspelling of "Name"
-  - Line 67: "Nmae" is a misspelling of "Name"
-  - Line 68: "Nmae" is a misspelling of "Name"
-  - Line 69: "Nmae" is a misspelling of "Name"
-  - Line 70: "Nmae" is a misspelling of "Name"
-  - Line 71: "Nmae" is a misspelling of "Name"
-  - Line 72: "Nmae" is a misspelling of "Name"
-  - Line 74: "Nmae" is a misspelling of "Name"
 - `internal/fn/decode_strict_test.go`
   - Line 14: "Nmae" is a misspelling of "Name"
 
