@@ -1,6 +1,6 @@
 module github.com/soulteary/ssh-config/v3
 
-go 1.27.2
+go 1.27.3
 
 require (
 	gopkg.in/yaml.v2 v2.4.0
