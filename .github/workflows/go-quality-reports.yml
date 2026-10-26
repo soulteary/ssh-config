@@ -173,7 +173,7 @@ jobs:
       - name: Test, race and coverage (GTR v1.1.2)
         if: "!cancelled() && (success())"
         id: go_test_report
-        uses: soulteary/go-test-report-action@bf04b539f7bf2a6f67d602da4259904b3dcdeba1  # v1.1.2
+        uses: soulteary/go-test-report-action@2760569379a1c95a195c602872ba00cd61495d89  # v1.1.3
         with:
           directory: "."
           packages: "./..."
